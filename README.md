@@ -125,6 +125,17 @@ Nothing here is a GDPR compliance claim. See
 [docs/EVALUATION.md](docs/EVALUATION.md) for what would have to be measured and
 documented before production collection.
 
+## Documentation
+
+| Document | For |
+| --- | --- |
+| [docs/API.md](docs/API.md) | Writing a client against the local HTTP/WebSocket API |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Working on this codebase; module map and invariants |
+| [docs/MODELS.md](docs/MODELS.md) | Choosing, pinning and fetching the two models |
+| [docs/EVALUATION.md](docs/EVALUATION.md) | Deciding whether automatic upload may be enabled |
+| [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) | Reviewing the privacy and security posture |
+| [docs/DEVIATIONS.md](docs/DEVIATIONS.md) | Checking this implementation against the plan |
+
 ## Test map
 
 | File | Tests | Covers |
