@@ -435,7 +435,7 @@ mod tests {
 
     #[test]
     fn production_upload_is_refused_until_gates_are_met() {
-        assert!(!UPLOAD_GATES_MET);
+        const { assert!(!UPLOAD_GATES_MET) };
         assert_eq!(
             recheck(Some(&consent(0)), UploadTarget::Production, 10),
             Err(Refusal::UploadGatesUnmet)

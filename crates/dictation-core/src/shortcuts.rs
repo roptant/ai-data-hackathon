@@ -25,6 +25,7 @@ pub struct ShortcutEvent {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, PartialOrd, Ord, Hash)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Modifiers {
     pub control: bool,
     pub alt: bool,

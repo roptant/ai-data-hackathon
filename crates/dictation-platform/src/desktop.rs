@@ -175,9 +175,20 @@ impl DesktopServices {
                 // it is not shown; the tray (StatusNotifierItem) indicates.
                 capabilities.nonactivating_indicator = Capability::Unavailable;
             }
-            SessionKind::X11 | SessionKind::Windows | SessionKind::MacOs => {
+            SessionKind::X11 | SessionKind::Windows => {
                 capabilities.focus_tracking = Capability::Available;
                 capabilities.native_insertion = Capability::Available;
+                capabilities.global_shortcut = Capability::Available;
+                capabilities.nonactivating_indicator = Capability::Available;
+            }
+            SessionKind::MacOs => {
+                // Focus must include a re-verifiable window identity. The
+                // previous third-party adapter generated AppKit bindings at
+                // build time and crashes on current Apple SDKs. Until the
+                // native accessibility adapter lands, fail closed and deliver
+                // into the result panel instead of risking the wrong window.
+                capabilities.focus_tracking = Capability::Unavailable;
+                capabilities.native_insertion = Capability::Unavailable;
                 capabilities.global_shortcut = Capability::Available;
                 capabilities.nonactivating_indicator = Capability::Available;
             }
@@ -236,6 +247,7 @@ impl DesktopServices {
     }
 
     /// Watches for sleep and screen lock.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn start_lifecycle_watch(&self, sender: UnboundedSender<LifecycleEvent>) -> crate::LifecycleReport {
         #[cfg(target_os = "linux")]
         let report = {
@@ -285,7 +297,7 @@ impl DesktopServices {
             }
             None
         }
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(target_os = "windows")]
         {
             let window = active_win_pos_rs::get_active_window().ok()?;
             let id = window.window_id.clone();
@@ -298,6 +310,10 @@ impl DesktopServices {
                 },
                 native: NativeFocus::Window { id },
             })
+        }
+        #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+        {
+            None
         }
     }
 
@@ -369,5 +385,27 @@ mod tests {
         assert_eq!(sanitize_for_insertion("hello\nworld\r\n"), "hello world");
         assert_eq!(sanitize_for_insertion("a\tb  c"), "a b c");
         assert_eq!(sanitize_for_insertion("\n\n"), "");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_focus_delivery_stays_disabled_without_a_safe_adapter() {
+        let desktop = DesktopServices::new().unwrap();
+        let capabilities = desktop.capabilities(false);
+        assert_eq!(desktop.session, SessionKind::MacOs);
+        assert_eq!(capabilities.focus_tracking, Capability::Unavailable);
+        assert_eq!(capabilities.native_insertion, Capability::Unavailable);
+        assert!(desktop.focus().is_none());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_focus_delivery_capabilities_remain_enabled() {
+        let desktop = DesktopServices::new().unwrap();
+        let capabilities = desktop.capabilities(false);
+        assert_eq!(desktop.session, SessionKind::Windows);
+        assert_eq!(capabilities.focus_tracking, Capability::Available);
+        assert_eq!(capabilities.native_insertion, Capability::Available);
+        assert_eq!(capabilities.global_shortcut, Capability::Available);
     }
 }

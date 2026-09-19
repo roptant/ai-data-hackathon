@@ -418,6 +418,7 @@ fn term_tokens(term: &str) -> Vec<String> {
 
 /// Runs every deterministic detector over frozen words.
 #[must_use]
+#[allow(clippy::too_many_lines)]
 pub fn detect(words: &[Word], private_terms: &[String]) -> RuleFindings {
     let mut findings = RuleFindings::default();
     if words.is_empty() {

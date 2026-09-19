@@ -369,10 +369,9 @@ impl Classifier for PrivacyEngine {
             Ok(Response::Error(error)) if error.code == "context_exceeded" => {
                 Err(ClassifierFailure::ContextExceeded)
             }
-            Ok(_) => Err(ClassifierFailure::WorkerError),
             Err(ProtocolError::Timeout) => Err(ClassifierFailure::Timeout),
             Err(ProtocolError::WorkerSpawn(_)) => Err(ClassifierFailure::Unavailable),
-            Err(_) => Err(ClassifierFailure::WorkerError),
+            Ok(_) | Err(_) => Err(ClassifierFailure::WorkerError),
         }
     }
 }

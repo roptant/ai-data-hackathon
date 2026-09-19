@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn digital_silence_is_silent() {
-        let activity = SessionActivity::analyze(&[0; 32_000], 16_000, VadSettings::default());
+        let activity = SessionActivity::analyze(&vec![0; 32_000], 16_000, VadSettings::default());
         assert!(activity.is_effectively_silent());
         assert!(activity.speech_intervals().is_empty());
     }

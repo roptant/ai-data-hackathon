@@ -919,7 +919,7 @@ mod tests {
     #[test]
     fn encoded_wav_is_canonical() {
         let (_, payloads) = valid_fixture();
-        assert_eq!(encode_wav(&[0; 16_000], 16_000), payloads["clip-000.wav"]);
+        assert_eq!(encode_wav(&vec![0; 16_000], 16_000), payloads["clip-000.wav"]);
     }
 
     #[test]

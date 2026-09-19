@@ -299,8 +299,8 @@ const FILTER_TAPS: usize = 63;
 
 fn lowpass_taps(source_rate: u32, target_rate: u32) -> Vec<f32> {
     // Cutoff at 90% of the target Nyquist frequency, Blackman window.
+    let cutoff = 0.45 * f64::from(target_rate) / f64::from(source_rate);
     #[allow(clippy::cast_precision_loss)]
-    let cutoff = 0.45 * target_rate as f64 / source_rate as f64;
     let middle = (FILTER_TAPS - 1) as f64 / 2.0;
     let mut taps: Vec<f64> = (0..FILTER_TAPS)
         .map(|index| {
@@ -388,7 +388,9 @@ mod tests {
             (0..48_000)
                 .map(|n| {
                     #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
-                    let value = (10_000.0 * (2.0 * std::f64::consts::PI * frequency * n as f64 / 48_000.0).sin()) as i16;
+                    let value = (10_000.0
+                        * (2.0 * std::f64::consts::PI * frequency * f64::from(n) / 48_000.0)
+                            .sin()) as i16;
                     value
                 })
                 .collect()

@@ -223,7 +223,7 @@ fn main() -> ExitCode {
         "whisper.cpp {} multilingual={} dtw={}",
         context
             .model_type_readable_str_lossy()
-            .map(|value| value.into_owned())
+            .map(std::borrow::Cow::into_owned)
             .unwrap_or_default(),
         context.is_multilingual(),
         arguments.dtw.is_some()

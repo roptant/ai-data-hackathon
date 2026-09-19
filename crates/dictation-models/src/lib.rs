@@ -315,7 +315,14 @@ mod tests {
             assert!(model.size_bytes > 0);
             assert!(!model.license.is_empty());
             assert!(!model.conversion_provenance.is_empty());
-            assert!(model.filename.ends_with(".bin") || model.filename.ends_with(".gguf"));
+            assert!(
+                std::path::Path::new(model.filename)
+                    .extension()
+                    .is_some_and(|extension| {
+                        extension.eq_ignore_ascii_case("bin")
+                            || extension.eq_ignore_ascii_case("gguf")
+                    })
+            );
         }
         assert_eq!(default_for(Role::Asr).role, Role::Asr);
         assert_eq!(default_for(Role::Privacy).role, Role::Privacy);

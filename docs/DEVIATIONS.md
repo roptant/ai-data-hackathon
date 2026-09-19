@@ -1,5 +1,10 @@
 # Deviations from the plan, and what is still a skeleton
 
+> Historical note: this document describes the retained Python reference, not
+> the current Rust/Tauri implementation. See
+> [`RUST_MIGRATION.md`](RUST_MIGRATION.md) and the repository README for current
+> implementation status and remaining release evidence.
+
 Written for: whoever reviews this against `IMPLEMENTATION_PLAN.md` and decides
 what to build next.
 

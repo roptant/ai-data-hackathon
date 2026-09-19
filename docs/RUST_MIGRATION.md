@@ -1,93 +1,85 @@
 # Rust + Tauri migration
 
-This repository is moving from the Python reference implementation to the
-Rust/Tauri architecture specified in `IMPLEMENTATION_PLAN.md`. The Python code
-stays in place until the Rust implementation has behavioral parity and the
-platform and privacy evidence required by the plan.
+Rust/Tauri is now the primary implementation. The Python package stays in the
+repository as a behavioral reference until the remaining platform, model and
+release evidence is complete.
 
-## Rules for the migration
+## Migration rules
 
-1. Port behavior, invariants, and tests—not Python implementation details.
-2. Keep the privacy-critical domain crate independent of Tauri and operating
-   system APIs.
-3. Keep microphone, secrets, storage, inference, and upload policy outside the
-   WebView. Tauri capabilities start minimal and expand only with reviewed use.
-4. Never claim a capability merely because an interface exists. Recording,
-   models, contribution, and delivery remain disabled until their real backend
-   and tests are present.
-5. Keep `UPLOAD_GATES_MET` false in the legacy implementation and add no Rust
-   production-upload switch until the evaluation in `docs/EVALUATION.md` has
-   been completed.
+1. Port behavior, invariants and tests, not Python implementation details.
+2. Keep privacy-critical domain logic independent of Tauri and OS APIs.
+3. Keep microphone access, secrets, storage, inference and upload policy out of
+   the WebView.
+4. Report observed capabilities only. Missing or unverifiable focus must route
+   output to the result panel rather than risk inserting into the wrong target.
+5. Production upload remains disabled until every requirement in
+   `docs/EVALUATION.md` is met.
 
-## Workspace
+## Implemented in Rust
 
-| Path | Purpose |
-| --- | --- |
-| `crates/dictation-core` | Pure state, timing, privacy, and policy logic |
-| `crates/dictation-storage` | Encrypted content scopes and independent retention |
-| `crates/dictation-worker` | Bounded, timeout-enforced private model IPC |
-| `crates/dictation-platform` | Native capability probes and microphone capture |
-| `src-tauri` | Trusted desktop process and narrow WebView command boundary |
-| `ui` | TypeScript status/settings UI with no filesystem or shell permission |
-| `src/dictation`, `tests` | Python behavioral reference during migration |
+- Pure recording state machine, shortcut interpretation and lifecycle policy
+- Canonical audio buffering, resampling, VAD and CPAL microphone capture
+- Frozen transcripts, partial reconciliation and word timing validation
+- Deterministic privacy rules and a strict, window-bounded classifier schema
+- Sentence expansion, fixed-point audio removal, interval mapping and packages
+- Quality, language, duplicate, collection-cap and post-removal gates
+- Authenticated encrypted storage with independently expiring data classes
+- Consent, contribution jobs, upload retries, receipts, withdrawal and deletion
+- Private persistent whisper.cpp/llama.cpp workers with deadlines
+- Scoped loopback API, pairing, WebSockets and a caption example client
+- Tenant-isolated server admission, lineage, training orchestration and deletion
+- Signed model delivery, atomic install and rollback
+- Tauri settings/status UI, tray, shortcut plumbing and recording indicator
 
-## Progress
+## Remaining work
 
-- [x] Cargo workspace and operating-system-independent domain crate
-- [x] Recording state machine port with Rust unit tests
-- [x] Half-open interval, padding, complement, destination, and resampling port
-- [x] Minimal Tauri 2 shell with a restrictive capability file and CSP
-- [x] TypeScript migration-status UI that does not imply recording works
-- [x] Frozen transcript and strict classifier-schema port
-- [x] Sentence expansion and fixed-point audio removal port
-- [x] Quality gates and clean upload-package validator
-- [x] Encrypted local storage and independently expiring metadata/package rows
-- [x] Asynchronous capture coordinator with separately owned training jobs
-- [ ] Platform microphone, shortcut, indicator, focus, and insertion adapters
-  - [x] Default-device microphone capture with bounded canonical PCM conversion
-  - [ ] Remappable native shortcuts and nonactivating indicator
-  - [ ] Native focus tracking and insertion implementations
-- [ ] Private whisper.cpp and llama.cpp worker IPC
-- [ ] Loopback API, consent, queue, upload worker, and hardened server
-- [ ] Trainer, signed delivery, packaging, signing, and release validation
+- Implement and exercise safe macOS focus tracking/native insertion. It is
+  deliberately unavailable today; dictated text stays in the result panel.
+- Complete real desktop validation on Windows, macOS, X11, GNOME Wayland and
+  the supported KDE Wayland versions, including denial and lifecycle cases.
+- Complete the fine-tune export → `q5_1` quantize → desktop worker load
+  experiment and record held-out/regression results and resource use. The
+  server now runs the configured whisper.cpp quantizer and verifies the output
+  header before evaluation or signing; the real-model comparison is still
+  outstanding.
+- Build a human-annotated authorized audio benchmark and conduct the required
+  listening review. The current synthetic transcript result is 87.5% high-risk
+  recall and therefore fails the provisional upload gate.
+- Finish installer packaging, signing/notarization, update/rollback exercises,
+  crash recovery and the release security audit.
+- Complete deployment governance and production server infrastructure. No
+  production credentials or upload switch should be added before then.
 
-## Known defects that must not be ported
+## Platform evidence
 
-The migration treats these as regression tests and design constraints:
+| Platform | Evidence | Honest capability state |
+| --- | --- | --- |
+| KDE Wayland | End-to-end test with ASR, captions and AT-SPI GTK insertion | Tested on one development machine; regular overlay disabled because it stole focus |
+| macOS arm64 | 158 Rust tests, strict Clippy, UI build, and normal/release-overlay Tauri builds | Focus tracking/native insertion unavailable; runtime hardware test pending |
+| Windows | `dictation-platform` target check and strict Clippy for `x86_64-pc-windows-msvc`; Windows-native CI added | CI has not run for these local changes; full desktop, sidecar and installer runtime tests pending |
+| GNOME Wayland / X11 | Adapters implemented | Runtime validation pending |
 
-- Server identifiers must be parsed as random IDs and must never become an
-  unchecked path component. Package validation must require all fields, types,
-  clips, safe filenames, size limits, and checksum coverage.
-- Raw audio must not be written as a plaintext WAV in a shared temporary
-  directory. Workers receive it over private IPC or through encrypted,
-  application-owned storage with bounded lifetime.
-- Training processing owns no live capture state. It runs asynchronously after
-  delivery, and completion of an old training job cannot mutate a newer session.
-- Raw-session, eligible-package, and operational-metadata expiration are
-  independent. Periodic cleanup is a supervised task, not startup-only work.
-- Authentication throttling counts failed attempts without locking valid clients
-  out after ordinary status requests. Revocation is rechecked for live streams.
-- Server idempotency and lineage keys are tenant-scoped, and a declared transport
-  checksum mismatch is a rejection.
+## Current verification
 
-## Build prerequisites
+- Rust 1.98.1: workspace builds and tests pass on Apple Silicon macOS.
+- TypeScript 5.9.3: UI build passes.
+- GitHub Actions now runs the locked Rust, Python and TypeScript checks on
+  macOS and Windows, including platform-specific tests and sidecar path checks.
+- The Qwen transcript benchmark catches 35/40 high-risk cases and 15/15
+  secrets; production upload remains disabled.
+- Strict Clippy passes with warnings denied. Workspace-wide `cargo fmt --check`
+  still reports legacy formatting drift from the large prior migration commit.
 
-- Rust 1.85 or newer with Cargo
-- Node.js and npm
-- Platform prerequisites from the official Tauri 2 documentation
+## Important invariants
 
-Once installed:
-
-```bash
-cargo test -p dictation-core
-npm --prefix ui install
-npm --prefix ui run build
-cargo tauri dev --manifest-path src-tauri/Cargo.toml
-```
-
-## Verification status
-
-The Rust/Tauri workspace was compiled with Rust 1.98.1. Workspace formatting,
-Clippy with warnings denied, and all 64 Rust tests pass. The TypeScript source
-and JSON configuration pass syntax checks. The frontend dependency build has
-not been run because npm is not installed in the current environment.
+- Clip ranges are half-open integer sample intervals; removal rounds outward
+  and retention rounds inward.
+- Transcript word IDs and timings are frozen before privacy analysis.
+- Rules and private-term detections are mandatory; the model can only add cuts.
+- Any worker, schema, timing, language or quality failure rejects the training
+  copy and can never default to upload eligibility.
+- Upload workers cannot access the raw-session store.
+- Consent is rechecked before transfer, admission and training; withdrawal wins
+  races and initiates server-side deletion.
+- Server identifiers are validated random IDs, idempotency is tenant-scoped,
+  and all declared checksums are verified.

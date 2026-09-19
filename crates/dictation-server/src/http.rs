@@ -85,6 +85,7 @@ fn internal() -> Response {
 /// A valid credential always authenticates: throttling applies only to
 /// failing attempts, so others' failures from a shared address (NAT, proxy)
 /// never lock a valid client out.
+#[allow(clippy::result_large_err)]
 async fn authenticate(state: &AppState, headers: &HeaderMap, address: SocketAddr) -> Result<Tenant, Response> {
     let refuse = || {
         let blocked = state.throttle.blocked(address.ip());
@@ -114,6 +115,7 @@ async fn authenticate(state: &AppState, headers: &HeaderMap, address: SocketAddr
     tenant.ok_or_else(refuse)
 }
 
+#[allow(clippy::result_large_err)]
 async fn blocking<T: Send + 'static>(
     state: &AppState,
     work: impl FnOnce(&mut ServerStore) -> Result<T, crate::store::ServerError> + Send + 'static,

@@ -1,6 +1,6 @@
 //! Shared application state.
 //!
-//! The WebView never receives storage handles, audio, or the server token.
+//! The `WebView` never receives storage handles, audio, or the server token.
 //! Transcript text crosses to the UI only for the local result panel and the
 //! overlay's live caption, both of which the user explicitly sees.
 
@@ -81,7 +81,7 @@ pub struct StatusView {
     pub elapsed_ms: u64,
     pub max_session_seconds: u64,
     pub locked: bool,
-    /// Short content-free notice, e.g. "microphone_failure".
+    /// Short content-free notice, e.g. `microphone_failure`.
     pub notice: Option<String>,
     pub asr_ready: bool,
     pub asr_loading: bool,

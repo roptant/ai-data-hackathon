@@ -11,7 +11,9 @@ Contract (see crates/dictation-server/src/training.rs):
   server evaluates the candidate itself with the desktop runtime.
 * Adaptation: the encoder is frozen and the decoder fine-tuned, so the base
   model is unchanged and the customer's model is a separate artifact.
-* Export: whisper.cpp ggml, f16 tensors. The header, mel filters, and
+* Export: whisper.cpp ggml, f16 tensors at ``OUTPUT/model-f16.bin``. The
+  server then uses the configured whisper.cpp quantizer to produce and verify
+  the q5_1 ``OUTPUT/model.bin`` candidate. The header, mel filters, and
   vocabulary are copied byte-for-byte from ``--base-model`` so tokenization
   cannot drift from the runtime the desktop ships; only tensors change.
 * ``--export-only`` converts the untouched Hugging Face weights, which must
@@ -183,7 +185,7 @@ def main() -> None:
         losses = fine_tune(model, processor, pairs, arguments.steps, arguments.learning_rate)
         report.update({"train_examples": len(pairs), "steps": arguments.steps, "first_loss": losses[0], "last_loss": losses[-1]})
     arguments.output.mkdir(parents=True, exist_ok=True)
-    export_ggml(model, arguments.base_model, arguments.output / "model.bin")
+    export_ggml(model, arguments.base_model, arguments.output / "model-f16.bin")
     (arguments.output / "train_report.json").write_text(json.dumps(report), encoding="utf-8")
 
 

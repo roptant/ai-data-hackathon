@@ -129,19 +129,18 @@ fn process_jobs(
     }
     let spec = dictation_models::default_for(Role::Privacy);
     if dictation_models::state(&shared.layout.models(), spec) != InstallState::Installed {
-        shared.publish(|status| status.training_status = "privacy_model_not_installed".to_owned());
+        shared.publish(|status| "privacy_model_not_installed".clone_into(&mut status.training_status));
         return;
     }
     if privacy.is_none() {
         if is_low_memory() {
             asr.send(AsrRequest::Release);
         }
-        match PrivacyEngine::new(workers, &shared.layout.models(), spec, verifier, shared.preemption.clone()) {
-            Ok(engine) => *privacy = Some(engine),
-            Err(_) => {
-                shared.publish(|status| status.training_status = "privacy_worker_unavailable".to_owned());
-                return;
-            }
+        if let Ok(engine) = PrivacyEngine::new(workers, &shared.layout.models(), spec, verifier, shared.preemption.clone()) {
+            *privacy = Some(engine);
+        } else {
+            shared.publish(|status| "privacy_worker_unavailable".clone_into(&mut status.training_status));
+            return;
         }
         shared.publish(|status| status.privacy_model_ready = true);
     }
@@ -155,7 +154,7 @@ fn process_jobs(
         privacy_model_revision: spec.revision.to_owned(),
     };
     while !shared.preemption.is_set() {
-        shared.publish(|status| status.training_status = "filtering".to_owned());
+        shared.publish(|status| "filtering".clone_into(&mut status.training_status));
         let (Ok(mut sessions), Ok(mut queue)) = (stores.sessions.lock(), stores.queue.lock()) else { return };
         let mut engine_stores = EngineStores { sessions: &mut sessions, queue: &mut queue };
         let outcome = process_next_job(&mut engine_stores, engine, &training, || shared.preemption.is_set(), crate::unix_now);

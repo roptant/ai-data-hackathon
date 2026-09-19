@@ -1,6 +1,6 @@
-//! Narrow command boundary between the WebView and the trusted core.
+//! Narrow command boundary between the `WebView` and the trusted core.
 //!
-//! The WebView receives status, settings (without secrets), the disclosure,
+//! The `WebView` receives status, settings (without secrets), the disclosure,
 //! content-free history, and the in-memory result panel it explicitly asks
 //! for. It never gets storage handles, audio, filesystem access, or tokens
 //! other than a pairing token it cannot see (released only to the client).

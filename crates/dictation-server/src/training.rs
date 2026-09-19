@@ -12,8 +12,9 @@
 use std::{
     ffi::OsString,
     fs,
+    io::Read,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::{Child, Command, ExitStatus, Stdio},
     time::{Duration, Instant},
 };
 
@@ -62,9 +63,13 @@ impl Default for PromotionPolicy {
 pub struct TrainerConfig {
     /// External trainer executable and fixed arguments. It receives
     /// `--job-dir DIR --base-model PATH --output DIR` and must write
-    /// `OUTPUT/model.bin` in the whisper.cpp ggml format.
+    /// `OUTPUT/model-f16.bin` in the whisper.cpp ggml format.
     pub program: PathBuf,
     pub arguments: Vec<String>,
+    /// The whisper.cpp quantizer. The server invokes it as
+    /// `QUANTIZER model-f16.bin model.bin q5_1` and refuses output whose
+    /// header does not identify `q5_1` weights.
+    pub quantizer: PathBuf,
     pub base_model: PathBuf,
     pub base_model_id: String,
     /// Directory of `name.wav` + `name.txt` pairs of general speech.
@@ -208,6 +213,43 @@ fn job_cancelled(store: &ServerStore, job_id: &str) -> Result<bool, ServerError>
         .is_some_and(|(state, _)| state == "cancelled"))
 }
 
+fn wait_for_process(
+    child: &mut Child,
+    store: &ServerStore,
+    job_id: &str,
+    started: Instant,
+    compute_cap: Duration,
+) -> Result<Option<ExitStatus>, ServerError> {
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(Some(status));
+        }
+        if started.elapsed() > compute_cap || job_cancelled(store, job_id)? {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(None);
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
+}
+
+const GGML_MAGIC: i32 = 0x6767_6d6c;
+const GGML_FTYPE_Q5_1: i32 = 9;
+const GGML_QNT_VERSION_FACTOR: i32 = 1_000;
+
+fn is_q5_1_model(path: &Path) -> bool {
+    let Ok(mut file) = fs::File::open(path) else {
+        return false;
+    };
+    let mut header = [0_u8; 48];
+    if file.read_exact(&mut header).is_err() {
+        return false;
+    }
+    let magic = i32::from_le_bytes([header[0], header[1], header[2], header[3]]);
+    let ftype = i32::from_le_bytes([header[44], header[45], header[46], header[47]]);
+    magic == GGML_MAGIC && ftype.rem_euclid(GGML_QNT_VERSION_FACTOR) == GGML_FTYPE_Q5_1
+}
+
 /// Runs one personalization job for `tenant_id`.
 ///
 /// # Errors
@@ -278,17 +320,7 @@ pub fn train_tenant(
             .stderr(Stdio::null())
             .spawn()?;
         let started = Instant::now();
-        let status = loop {
-            if let Some(status) = child.try_wait()? {
-                break Some(status);
-            }
-            if started.elapsed() > compute_cap || job_cancelled(store, &job_id)? {
-                let _ = child.kill();
-                let _ = child.wait();
-                break None;
-            }
-            std::thread::sleep(Duration::from_millis(500));
-        };
+        let status = wait_for_process(&mut child, store, &job_id, started, compute_cap)?;
         if job_cancelled(store, &job_id)? {
             return Ok(TrainingOutcome::Cancelled);
         }
@@ -298,9 +330,34 @@ pub fn train_tenant(
         if !status.success() {
             return keep(store, "trainer_failed", None);
         }
-        let candidate = output.join("model.bin");
-        if !candidate.exists() {
+        let unquantized = output.join("model-f16.bin");
+        if !unquantized.exists() {
             return keep(store, "trainer_produced_no_model", None);
+        }
+        let candidate = output.join("model.bin");
+        let quantizer = Command::new(&config.quantizer)
+            .arg(&unquantized)
+            .arg(&candidate)
+            .arg("q5_1")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn();
+        let Ok(mut quantizer) = quantizer else {
+            return keep(store, "quantizer_unavailable", None);
+        };
+        let status = wait_for_process(&mut quantizer, store, &job_id, started, compute_cap)?;
+        if job_cancelled(store, &job_id)? {
+            return Ok(TrainingOutcome::Cancelled);
+        }
+        let Some(status) = status else {
+            return keep(store, "compute_cap_exceeded", None);
+        };
+        if !status.success() {
+            return keep(store, "quantizer_failed", None);
+        }
+        if !is_q5_1_model(&candidate) {
+            return keep(store, "quantizer_produced_invalid_model", None);
         }
         let heldout_clips: Vec<Clip> = heldout.into_iter().map(|(_, clip)| clip).collect();
         let Some(regression_dir) = &config.regression_set else {
@@ -393,5 +450,33 @@ pub fn describe(outcome: &TrainingOutcome) -> Value {
         TrainingOutcome::Delivered { model_version, evaluation } => json!({ "outcome": "delivered", "model_version": model_version, "evaluation": evaluation }),
         TrainingOutcome::KeptBaseModel { reason, evaluation } => json!({ "outcome": "kept_base_model", "reason": reason, "evaluation": evaluation }),
         TrainingOutcome::Cancelled => json!({ "outcome": "cancelled" }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{GGML_FTYPE_Q5_1, GGML_MAGIC, is_q5_1_model};
+    use std::{fs, path::PathBuf};
+
+    fn model(ftype: i32) -> Vec<u8> {
+        let mut bytes = vec![0_u8; 48];
+        bytes[0..4].copy_from_slice(&GGML_MAGIC.to_le_bytes());
+        bytes[44..48].copy_from_slice(&ftype.to_le_bytes());
+        bytes
+    }
+
+    fn temporary_model(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!("dictation-{name}-{}.bin", std::process::id()))
+    }
+
+    #[test]
+    fn only_q5_1_quantized_models_pass_the_delivery_gate() {
+        let path = temporary_model("q5-1-header");
+        fs::write(&path, model(1_000 + GGML_FTYPE_Q5_1)).unwrap();
+        assert!(is_q5_1_model(&path));
+
+        fs::write(&path, model(1)).unwrap();
+        assert!(!is_q5_1_model(&path));
+        let _ = fs::remove_file(path);
     }
 }

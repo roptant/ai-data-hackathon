@@ -119,6 +119,7 @@ fn error(status: StatusCode, code: &str) -> Response {
 }
 
 /// Rejects DNS-rebinding and browser-originated requests.
+#[allow(clippy::result_large_err)]
 fn guard(headers: &HeaderMap, port: u16) -> Result<(), Response> {
     let host = headers.get(header::HOST).and_then(|value| value.to_str().ok()).unwrap_or_default();
     let allowed = [format!("127.0.0.1:{port}"), format!("localhost:{port}")];
@@ -145,6 +146,7 @@ struct Client(AuthorizedClient, String);
 impl FromRequestParts<ApiState> for Client {
     type Rejection = Response;
 
+    #[allow(clippy::unused_async_trait_impl)]
     async fn from_request_parts(parts: &mut Parts, state: &ApiState) -> Result<Self, Self::Rejection> {
         guard(&parts.headers, state.port)?;
         let token = bearer(&parts.headers).ok_or_else(|| error(StatusCode::UNAUTHORIZED, "unauthorized"))?;
@@ -156,6 +158,7 @@ impl FromRequestParts<ApiState> for Client {
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn require(client: &AuthorizedClient, scope: Scope) -> Result<(), Response> {
     if client.has(scope) {
         Ok(())
@@ -310,20 +313,19 @@ async fn stream(
                 let _ = socket.send(Message::Close(None)).await;
                 return;
             }
-            received = receiver.recv() => {
+            event_result = receiver.recv() => {
                 let current = state.directory.revocation_generation();
                 if current != generation {
                     generation = current;
-                    match state.directory.authenticate(&token) {
-                        Some(updated) => client = updated,
-                        None => {
-                            let _ = send_json(&mut socket, &serde_json::json!({ "version": API_VERSION, "event": "error", "code": "token_revoked" })).await;
-                            let _ = socket.send(Message::Close(None)).await;
-                            return;
-                        }
+                    if let Some(updated) = state.directory.authenticate(&token) {
+                        client = updated;
+                    } else {
+                        let _ = send_json(&mut socket, &serde_json::json!({ "version": API_VERSION, "event": "error", "code": "token_revoked" })).await;
+                        let _ = socket.send(Message::Close(None)).await;
+                        return;
                     }
                 }
-                match received {
+                match event_result {
                     Ok(event) => {
                         if permitted(&client, &event) && !send_json(&mut socket, &event).await {
                             return;

@@ -4,8 +4,15 @@
   "version": "0.2.0",
   "identifier": "app.localdictation.desktop",
   "build": {
-    "beforeBuildCommand": "sh scripts/build-ui.sh",
-    "beforeDevCommand": "sh scripts/build-ui.sh",
+    "beforeBuildCommand": {
+      "script": "npm run build",
+      "cwd": "../ui"
+    },
+    "beforeDevCommand": {
+      "script": "npm run build",
+      "cwd": "../ui",
+      "wait": true
+    },
     "frontendDist": "../ui/dist"
   },
   "app": {
@@ -37,10 +44,6 @@
     "category": "Productivity",
     "shortDescription": "Private local dictation",
     "longDescription": "Local speech recognition with optional, privacy-filtered personalization.",
-    "externalBin": [
-      "binaries/dictation-asr-worker",
-      "binaries/dictation-privacy-worker"
-    ],
     "linux": {
       "deb": {
         "depends": [],

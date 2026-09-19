@@ -5,7 +5,8 @@
 //! dictation-server tenant-create --root DIR --name NAME
 //! dictation-server keygen --root DIR
 //! dictation-server train --root DIR --tenant ID --trainer PROG [--trainer-arg A]...
-//!     --base-model PATH --base-model-id ID --asr-worker PATH --regression-set DIR
+//!     --quantizer PATH --base-model PATH --base-model-id ID --asr-worker PATH
+//!     --regression-set DIR
 //!     [--min-train N] [--min-heldout N] [--compute-seconds N]
 //! dictation-server sweep --root DIR
 //! ```
@@ -137,6 +138,7 @@ fn run(command: &str, arguments: &Arguments) -> Result<(), String> {
             let config = TrainerConfig {
                 program: PathBuf::from(arguments.require("trainer")?),
                 arguments: arguments.all("trainer-arg"),
+                quantizer: PathBuf::from(arguments.require("quantizer")?),
                 base_model: PathBuf::from(arguments.require("base-model")?),
                 base_model_id: arguments.require("base-model-id")?.to_owned(),
                 regression_set: arguments.get("regression-set").map(PathBuf::from),

@@ -16,12 +16,17 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     if app.get_webview_window(LABEL).is_some() {
         return Ok(());
     }
-    let window = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("indicator.html".into()))
+    let builder = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("indicator.html".into()))
         .title("Local Dictation indicator")
         .inner_size(300.0, 64.0)
         .resizable(false)
-        .decorations(false)
-        .transparent(true)
+        .decorations(false);
+    // Transparent WKWebView windows require Tauri's `macos-private-api`
+    // feature, which is unsuitable for an App Store-capable build. A solid,
+    // nonactivating indicator is safer there.
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder.transparent(true);
+    let window = builder
         .always_on_top(true)
         .visible_on_all_workspaces(true)
         .skip_taskbar(true)

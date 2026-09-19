@@ -273,21 +273,18 @@ pub fn analyze(
                 return analysis;
             }
         };
-        match validate_output(
+        if let Ok(output) = validate_output(
             &raw,
             &window.word_ids(),
             settings.allow_word_level_cuts,
             MAX_SPANS_PER_WINDOW,
         ) {
-            Ok(output) => {
-                analysis.uncertain |= output.uncertain;
-                analysis.spans.extend(output.spans);
-            }
-            Err(_) => {
-                analysis.uncertain = true;
-                analysis.rejected_reason = Some("schema_violation");
-                return analysis;
-            }
+            analysis.uncertain |= output.uncertain;
+            analysis.spans.extend(output.spans);
+        } else {
+            analysis.uncertain = true;
+            analysis.rejected_reason = Some("schema_violation");
+            return analysis;
         }
     }
     // Union: rule hits stay; overlapping windows can only add duplicates,
@@ -421,7 +418,7 @@ mod tests {
         let analysis = analyze(&transcript, &mut classifier, PrivacySettings::default(), &[]);
         assert!(analysis.ok(), "{analysis}");
         assert!(analysis.spans.iter().any(|span| span.source == DetectionSource::Model));
-        assert!(analysis.spans.iter().any(|span| span.is_mandatory()));
+        assert!(analysis.spans.iter().any(SensitiveSpan::is_mandatory));
         assert!(classifier.prompts[0].contains("3:Jane."));
     }
 

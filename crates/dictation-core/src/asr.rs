@@ -362,7 +362,7 @@ mod tests {
 
     #[test]
     fn segments_without_detected_speech_are_suppressed() {
-        let silence = SessionActivity::analyze(&[0; 32_000], 16_000, VadSettings::default());
+        let silence = SessionActivity::analyze(&vec![0; 32_000], 16_000, VadSettings::default());
         assert!(is_hallucination_risk(&segment("Thank you.", 0, 32_000), &silence, 0.6));
     }
 }

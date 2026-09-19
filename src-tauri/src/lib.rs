@@ -1,8 +1,15 @@
 //! Local Dictation desktop shell.
 //!
 //! Microphone capture, secrets, storage, inference, and upload policy live in
-//! Rust threads and isolated workers. The WebView gets a narrow command set
+//! Rust threads and isolated workers. The `WebView` gets a narrow command set
 //! (see `capabilities/`) and no filesystem, shell, or network permission.
+
+// Tauri command handlers and serialized view structs intentionally use owned
+// parameters and several booleans because those shapes are the IPC contract.
+#![allow(clippy::needless_pass_by_value, clippy::struct_excessive_bools)]
+// These explicit drops release structs that borrow locked stores before the
+// following status/update work.
+#![allow(clippy::drop_non_drop)]
 
 mod api_bridge;
 mod asr_thread;
@@ -223,7 +230,7 @@ fn setup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .setup(|app| setup(app.handle()).map_err(Into::into))
+        .setup(|app| setup(app.handle()))
         .on_window_event(|window, event| {
             if window.label() == "main" {
                 if let WindowEvent::CloseRequested { api, .. } = event {

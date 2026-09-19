@@ -121,7 +121,7 @@ impl Default for AppSettings {
     }
 }
 
-/// View of settings safe to send to the WebView: the server token is replaced
+/// View of settings safe to send to the `WebView`: the server token is replaced
 /// by whether one is set.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -167,7 +167,7 @@ impl From<&AppSettings> for SettingsView {
     }
 }
 
-/// Partial update from the WebView. Omitted fields keep their value; the
+/// Partial update from the `WebView`. Omitted fields keep their value; the
 /// token is replaced only when a new non-empty value is supplied.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -263,7 +263,7 @@ impl AppSettings {
             next.server_url = url;
         }
         if let Some(token) = update.server_token.filter(|token| !token.trim().is_empty()) {
-            next.server_token = token.trim().to_owned();
+            token.trim().clone_into(&mut next.server_token);
         }
         if let Some(key) = update.delivery_public_key {
             let key = key.trim().to_ascii_lowercase();

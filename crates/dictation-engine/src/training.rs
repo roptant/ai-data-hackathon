@@ -178,7 +178,7 @@ pub fn enqueue_session(
         .sessions
         .create_scope(&scope, DataClass::RawSession, expires_at, now)?;
     let audio: Vec<u8> = session.pcm.iter().flat_map(|sample| sample.to_le_bytes()).collect();
-    let stored = stores
+    let stored_session = stores
         .sessions
         .put_artifact(&scope, &format!("{scope}:header"), "session_header", &encode_header(session)?, now)
         .and_then(|()| {
@@ -186,7 +186,7 @@ pub fn enqueue_session(
                 .sessions
                 .put_artifact(&scope, &format!("{scope}:audio"), "session_audio", &audio, now)
         });
-    if let Err(error) = stored {
+    if let Err(error) = stored_session {
         let _ = stores.sessions.delete_scope(&scope);
         return Err(error);
     }
@@ -285,6 +285,7 @@ pub struct TrainingSettings {
 /// # Errors
 ///
 /// Fails on storage errors. Classifier and dataset failures reject the job.
+#[allow(clippy::too_many_lines)]
 pub fn process_next_job<C: Classifier>(
     stores: &mut Stores<'_>,
     classifier: &mut C,

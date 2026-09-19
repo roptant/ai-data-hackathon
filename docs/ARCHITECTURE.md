@@ -1,5 +1,9 @@
 # Architecture
 
+> This is the architecture of the retained Python behavioral reference. The
+> production Rust/Tauri workspace and its current status are mapped in the
+> repository README and [`RUST_MIGRATION.md`](RUST_MIGRATION.md).
+
 Written for: engineers picking this codebase up against the plan.
 
 The module layout follows the plan's module table (section 3). This document

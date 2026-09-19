@@ -260,14 +260,13 @@ impl Controller {
                 Effect::StopCapture => {
                     if let Some(active) = self.active.as_mut() {
                         if let Some(capture) = active.capture.take() {
-                            match capture.stop() {
-                                Ok(audio) => active.pcm = audio.samples,
-                                Err(_) => {
-                                    active.pcm.clear();
-                                    self.shared.publish(|status| status.notice = Some("microphone_failure".to_owned()));
-                                    if self.machine.state() == State::Finalizing {
-                                        follow.push(Event::Failed);
-                                    }
+                            if let Ok(audio) = capture.stop() {
+                                active.pcm = audio.samples;
+                            } else {
+                                active.pcm.clear();
+                                self.shared.publish(|status| status.notice = Some("microphone_failure".to_owned()));
+                                if self.machine.state() == State::Finalizing {
+                                    follow.push(Event::Failed);
                                 }
                             }
                         }

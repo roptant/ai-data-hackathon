@@ -1,6 +1,6 @@
 //! Shortcut registration per platform.
 //!
-//! Wayland: the GlobalShortcuts portal (the compositor owns the grab and the
+//! Wayland: the `GlobalShortcuts` portal (the compositor owns the grab and the
 //! user remaps triggers in system settings). X11, Windows, macOS: the Tauri
 //! global-shortcut plugin with press/release states. Escape is registered
 //! only while recording so it is never taken from other applications

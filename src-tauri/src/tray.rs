@@ -1,6 +1,6 @@
 //! Tray indicator with text status (not color alone) and controls.
 //!
-//! Linux uses a StatusNotifierItem (KDE, and GNOME with the AppIndicator
+//! Linux uses a `StatusNotifierItem` (KDE, and GNOME with the `AppIndicator`
 //! extension) implemented over D-Bus; Windows and macOS use Tauri's tray.
 
 use std::sync::{Mutex, OnceLock};

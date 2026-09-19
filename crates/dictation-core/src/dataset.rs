@@ -10,7 +10,7 @@
 //!   manifest stays local;
 //! * any failed stage rejects the session.
 
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, fmt::Write};
 
 use sha2::{Digest, Sha256};
 
@@ -194,11 +194,13 @@ fn content_hash(clips: &[RetainedClip]) -> String {
         digest.update(clip.text.as_bytes());
         digest.update([0]);
     }
-    digest
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    digest.finalize().iter().fold(
+        String::with_capacity(64),
+        |mut output, byte| {
+            let _ = write!(output, "{byte:02x}");
+            output
+        },
+    )
 }
 
 fn display_text(words: &[Word]) -> String {
@@ -223,6 +225,7 @@ fn mean(values: impl Iterator<Item = (f64, f64)>) -> f32 {
 
 /// Builds the training copy for one session.
 #[allow(clippy::too_many_lines)]
+#[must_use]
 pub fn build_dataset(
     transcript: &FrozenTranscript,
     analysis: &PrivacyAnalysis,
@@ -568,7 +571,7 @@ mod tests {
     #[test]
     fn silent_audio_never_becomes_an_example() {
         let (transcript, _) = session("The meeting starts tomorrow morning.");
-        let silence = vec![0_i16; transcript.total_samples() as usize];
+        let silence = vec![0_i16; usize::try_from(transcript.total_samples()).unwrap()];
         let analysis = analyze(&transcript, &mut Clean, PrivacySettings::default(), &[]);
         let activity = SessionActivity::analyze(&silence, RATE, VadSettings::default());
         let result = build_dataset(

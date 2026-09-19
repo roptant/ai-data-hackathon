@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import sys
 
 import pytest
 
@@ -46,9 +47,19 @@ def test_wayland_does_not_claim_focus_tracking() -> None:
     assert report.status(Capability.FOCUS_TARGET_TRACKING).support is Support.UNAVAILABLE
 
 
-def test_windows_does_not_claim_press_release_shortcuts() -> None:
+def test_windows_does_not_claim_press_release_shortcuts(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("dictation.platform_.windows.sys.platform", "win32")
+    monkeypatch.setattr("dictation.platform_.windows._user32", lambda: None)
     report = WindowsAdapter().probe()
     assert report.status(Capability.GLOBAL_SHORTCUT_PRESS_RELEASE).support is Support.UNKNOWN
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="requires the real Windows user32 API")
+def test_windows_runtime_probe_finds_native_desktop_apis() -> None:
+    report = WindowsAdapter().probe()
+    assert report.status(Capability.FOCUS_TARGET_TRACKING).support is Support.AVAILABLE
+    assert report.status(Capability.TEXT_INSERTION_NATIVE).support is Support.AVAILABLE
+    assert report.status(Capability.GLOBAL_SHORTCUT_TOGGLE).support is Support.AVAILABLE
 
 
 def test_no_adapter_claims_complete_password_field_detection() -> None:

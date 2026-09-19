@@ -71,6 +71,7 @@ fn elapsed_ms(started: Instant) -> u64 {
 }
 
 impl PrivacyHandler {
+    #[allow(clippy::too_many_lines)]
     fn classify(&mut self, request: &ClassifyRequest) -> Result<ClassificationResponse, String> {
         let started = Instant::now();
         let template = self
