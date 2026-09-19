@@ -1,0 +1,19 @@
+[package]
+name = "dictation-privacy-worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Private llama.cpp sensitive-span classifier worker for Local Dictation"
+
+[[bin]]
+name = "dictation-privacy-worker"
+path = "src/main.rs"
+
+[dependencies]
+dictation-worker = { path = "../../crates/dictation-worker" }
+encoding_rs = "0.8"
+llama-cpp-2 = { version = "0.1.156", default-features = false, features = ["common"] }
+
+[lints]
+workspace = true

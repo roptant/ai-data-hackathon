@@ -1,0 +1,14 @@
+:root { font-family: system-ui, sans-serif; color-scheme: light dark; }
+html, body { margin: 0; background: transparent; overflow: hidden; }
+#indicator {
+  display: flex; align-items: center; gap: 0.5rem; height: 56px; margin: 4px;
+  padding: 0 0.6rem; border-radius: 28px; background: rgba(20, 24, 22, 0.92); color: #fff;
+  font-size: 13px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+#symbol { font-size: 18px; width: 1.4em; text-align: center; }
+#indicator[data-state="recording"] #symbol, #indicator[data-state="recording_locked"] #symbol { color: #ff5a4f; }
+#indicator[data-state="error"] { background: rgba(120, 20, 16, 0.94); }
+.text { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+#state { font-weight: 600; }
+.caption { opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+button { background: rgba(255, 255, 255, 0.12); color: #fff; border: 0; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; }

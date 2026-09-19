@@ -1,0 +1,18 @@
+[package]
+name = "dictation-asr-worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Private whisper.cpp speech-recognition worker for Local Dictation"
+
+[[bin]]
+name = "dictation-asr-worker"
+path = "src/main.rs"
+
+[dependencies]
+dictation-worker = { path = "../../crates/dictation-worker" }
+whisper-rs = "0.16.0"
+
+[lints]
+workspace = true

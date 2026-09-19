@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-dismiss-result"
+description = "Enables the dismiss_result command without any pre-configured scope."
+commands.allow = ["dismiss_result"]
+
+[[permission]]
+identifier = "deny-dismiss-result"
+description = "Denies the dismiss_result command without any pre-configured scope."
+commands.deny = ["dismiss_result"]

@@ -1,0 +1,189 @@
+{
+  "benign_over_redaction_word_fraction": 0.0,
+  "benign_sessions_refused": 0,
+  "by_category": {
+    "account_identifier": {
+      "caught": 2,
+      "ci95": [
+        0.3423802239546494,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 2
+    },
+    "address": {
+      "caught": 5,
+      "ci95": [
+        0.4364971749742326,
+        0.969946630588185
+      ],
+      "recall": 0.8333333333333334,
+      "total": 6
+    },
+    "contact": {
+      "caught": 5,
+      "ci95": [
+        0.5655175313406071,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 5
+    },
+    "contextual_combination": {
+      "caught": 1,
+      "ci95": [
+        0.09453120463920084,
+        0.9054687953607992
+      ],
+      "recall": 0.5,
+      "total": 2
+    },
+    "credential_secret": {
+      "caught": 6,
+      "ci95": [
+        0.6096657083436265,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 6
+    },
+    "customer_confidential": {
+      "caught": 2,
+      "ci95": [
+        0.2076595988078242,
+        0.9385080559790691
+      ],
+      "recall": 0.6666666666666666,
+      "total": 3
+    },
+    "direct_identifier": {
+      "caught": 3,
+      "ci95": [
+        0.4385029643606803,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 3
+    },
+    "financial": {
+      "caught": 5,
+      "ci95": [
+        0.5655175313406071,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 5
+    },
+    "government_id": {
+      "caught": 3,
+      "ci95": [
+        0.4385029643606803,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 3
+    },
+    "health": {
+      "caught": 8,
+      "ci95": [
+        0.5650002916292091,
+        0.98010911258309
+      ],
+      "recall": 0.8888888888888888,
+      "total": 9
+    },
+    "political_religious": {
+      "caught": 4,
+      "ci95": [
+        0.5101091596030786,
+        0.9999999999999999
+      ],
+      "recall": 1.0,
+      "total": 4
+    },
+    "sensitive_narrative": {
+      "caught": 4,
+      "ci95": [
+        0.375534627029995,
+        0.9637758917743693
+      ],
+      "recall": 0.8,
+      "total": 5
+    },
+    "sexuality": {
+      "caught": 2,
+      "ci95": [
+        0.3423802239546494,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 2
+    }
+  },
+  "by_suite": {
+    "high_risk": {
+      "caught": 35,
+      "ci95": [
+        0.7388788003201471,
+        0.9454049978360052
+      ],
+      "recall": 0.875,
+      "total": 40
+    },
+    "secrets": {
+      "caught": 15,
+      "ci95": [
+        0.7961166964035129,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 15
+    }
+  },
+  "cases": 70,
+  "gates": {
+    "high_risk_lower_ci_bound": 0.7388788003201471,
+    "high_risk_recall_at_least_99pct": false,
+    "note": "Synthetic text only: no ASR errors, accents, noise, or listening tests. Passing here is necessary, not sufficient.",
+    "secrets_zero_misses": true
+  },
+  "misses": [
+    {
+      "category": "health",
+      "id": "hr-012",
+      "suite": "high_risk"
+    },
+    {
+      "category": "contextual_combination",
+      "id": "hr-013",
+      "suite": "high_risk"
+    },
+    {
+      "category": "sensitive_narrative",
+      "id": "hr-030",
+      "suite": "high_risk"
+    },
+    {
+      "category": "address",
+      "id": "hr-031",
+      "suite": "high_risk"
+    },
+    {
+      "category": "customer_confidential",
+      "id": "hr-033",
+      "suite": "high_risk"
+    }
+  ],
+  "model": "qwen3-4b-instruct-2507-q4_k_m",
+  "refused_sessions": [
+    {
+      "id": "hr-022",
+      "reason": "uncertain"
+    },
+    {
+      "id": "hr-023",
+      "reason": "uncertain"
+    }
+  ],
+  "wall_seconds": 872
+}

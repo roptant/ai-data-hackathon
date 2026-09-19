@@ -1,0 +1,39 @@
+[package]
+name = "dictation-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Customer-isolated admission, lineage, training orchestration, and signed delivery"
+
+[[bin]]
+name = "dictation-server"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+axum = "0.8"
+chacha20poly1305 = "0.10"
+dictation-core = { path = "../dictation-core" }
+dictation-models = { path = "../dictation-models" }
+dictation-protocol = { path = "../dictation-protocol" }
+dictation-worker = { path = "../dictation-worker" }
+ed25519-dalek = { version = "2", features = ["std", "rand_core"] }
+hex = "0.4"
+hkdf = "0.12"
+rand = "0.8"
+rusqlite = { version = "0.37", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+zeroize = "1"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
+
+[lints]
+workspace = true

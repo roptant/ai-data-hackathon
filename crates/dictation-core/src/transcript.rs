@@ -300,6 +300,11 @@ impl FrozenTranscript {
     }
 
     #[must_use]
+    pub const fn total_samples(&self) -> u64 {
+        self.total_samples
+    }
+
+    #[must_use]
     pub fn language(&self) -> &str {
         &self.language
     }

@@ -13,21 +13,21 @@ use crate::transcript::{DetectionSource, RemovalAction, SensitiveCategory, Sensi
 pub const MAX_SPANS_PER_WINDOW: usize = 64;
 
 pub const GBNF_GRAMMAR: &str = r#"
-root   ::= "{" ws "\"spans\"" ws ":" ws spans ws "," ws "\"uncertain\"" ws ":" ws bool ws "}"
-spans  ::= "[" ws "]" | "[" ws span (ws "," ws span)* ws "]"
-span   ::= "{" ws "\"start_word_id\"" ws ":" ws int ws ","
-           ws "\"end_word_id_exclusive\"" ws ":" ws int ws ","
-           ws "\"category\"" ws ":" ws category ws ","
-           ws "\"action\"" ws ":" ws action ws "}"
-category ::= "\"direct_identifier\"" | "\"contact\"" | "\"address\"" |
-             "\"account_identifier\"" | "\"government_id\"" | "\"financial\"" |
-             "\"credential_secret\"" | "\"customer_confidential\"" | "\"health\"" |
-             "\"political_religious\"" | "\"sexuality\"" | "\"sensitive_narrative\"" |
-             "\"contextual_combination\"" | "\"user_defined\""
-action   ::= "\"drop_sentence\"" | "\"drop_words\""
-bool     ::= "true" | "false"
-int      ::= [0-9] | [1-9] [0-9]*
-ws       ::= [ \t\n]*
+root ::= "{" ws "\"spans\"" ws ":" ws spans ws "," ws "\"uncertain\"" ws ":" ws bool ws "}"
+spans ::= "[" ws "]" | "[" ws span (ws "," ws span)* ws "]"
+span ::= ( "{" ws "\"start_word_id\"" ws ":" ws int ws ","
+  ws "\"end_word_id_exclusive\"" ws ":" ws int ws ","
+  ws "\"category\"" ws ":" ws category ws ","
+  ws "\"action\"" ws ":" ws action ws "}" )
+category ::= ( "\"direct_identifier\"" | "\"contact\"" | "\"address\"" |
+  "\"account_identifier\"" | "\"government_id\"" | "\"financial\"" |
+  "\"credential_secret\"" | "\"customer_confidential\"" | "\"health\"" |
+  "\"political_religious\"" | "\"sexuality\"" | "\"sensitive_narrative\"" |
+  "\"contextual_combination\"" | "\"user_defined\"" )
+action ::= "\"drop_sentence\"" | "\"drop_words\""
+bool ::= "true" | "false"
+int ::= [0-9] | [1-9] [0-9]{0,8}
+ws ::= [ \t\n]{0,8}
 "#;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

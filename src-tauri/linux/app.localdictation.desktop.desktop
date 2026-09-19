@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Local Dictation
+Comment=Private local dictation
+Exec=local-dictation-desktop
+Icon=local-dictation-desktop
+Terminal=false
+Categories=Utility;Accessibility;
+StartupWMClass=local-dictation-desktop

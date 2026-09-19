@@ -59,6 +59,9 @@ pub enum DeliveryMethod {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeliveryReason {
+    /// The platform cannot confirm the target is unchanged (e.g. Wayland
+    /// without accessibility), so nothing is sent automatically.
+    FocusUnverifiable,
     FocusChanged,
     ProtectedField,
     ApplicationExcluded,
@@ -80,6 +83,9 @@ pub fn choose_delivery(
     capabilities: PlatformCapabilities,
     policy: &InsertionPolicy,
 ) -> DeliveryDecision {
+    if capabilities.focus_tracking != Capability::Available {
+        return manual(DeliveryReason::FocusUnverifiable);
+    }
     if original != current {
         return manual(DeliveryReason::FocusChanged);
     }
@@ -148,6 +154,7 @@ mod tests {
 
     fn capabilities() -> PlatformCapabilities {
         PlatformCapabilities {
+            focus_tracking: Capability::Available,
             native_insertion: Capability::Available,
             clipboard: Capability::Available,
             ..PlatformCapabilities::default()
@@ -200,6 +207,7 @@ mod tests {
     fn clipboard_requires_prior_disclosure() {
         let target = target();
         let capabilities = PlatformCapabilities {
+            focus_tracking: Capability::Available,
             clipboard: Capability::Available,
             ..PlatformCapabilities::default()
         };
@@ -214,6 +222,20 @@ mod tests {
         assert_eq!(
             choose_delivery(&target, &target, capabilities, &policy).method,
             DeliveryMethod::ClipboardFallback
+        );
+    }
+
+    #[test]
+    fn unverifiable_focus_never_inserts_automatically() {
+        let target = target();
+        let capabilities = PlatformCapabilities {
+            native_insertion: Capability::Available,
+            clipboard: Capability::Available,
+            ..PlatformCapabilities::default()
+        };
+        assert_eq!(
+            choose_delivery(&target, &target, capabilities, &InsertionPolicy::default()),
+            manual(DeliveryReason::FocusUnverifiable)
         );
     }
 

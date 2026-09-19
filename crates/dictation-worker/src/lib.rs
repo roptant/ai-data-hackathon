@@ -2,7 +2,13 @@
 //!
 //! Audio is sent through an inherited pipe rather than a plaintext temporary
 //! file. Each request gets a fresh process with a cleared environment and a
-//! mandatory deadline; timeout kills the child.
+//! mandatory deadline; timeout kills the child. [`persistent::PersistentWorker`]
+//! keeps a loaded model across requests with the same deadline semantics.
+
+pub mod messages;
+pub mod persistent;
+pub mod sandbox;
+pub mod serve;
 
 use std::{
     ffi::OsString,

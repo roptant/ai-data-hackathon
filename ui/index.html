@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>Local Dictation</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main id="app" aria-live="polite"></main>
-    <script type="module" src="/src/main.ts"></script>
+    <main id="app"></main>
+    <p id="live" class="visually-hidden" role="status" aria-live="polite"></p>
+    <script type="module" src="main.js"></script>
   </body>
 </html>
-

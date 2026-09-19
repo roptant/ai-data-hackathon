@@ -1,0 +1,257 @@
+{
+  "benign_over_redaction_word_fraction": 0.0,
+  "benign_sessions_refused": 0,
+  "by_category": {
+    "account_identifier": {
+      "caught": 2,
+      "ci95": [
+        0.3423802239546494,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 2
+    },
+    "address": {
+      "caught": 3,
+      "ci95": [
+        0.1876163049804081,
+        0.812383695019592
+      ],
+      "recall": 0.5,
+      "total": 6
+    },
+    "contact": {
+      "caught": 5,
+      "ci95": [
+        0.5655175313406071,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 5
+    },
+    "contextual_combination": {
+      "caught": 0,
+      "ci95": [
+        0.0,
+        0.6576197760453506
+      ],
+      "recall": 0.0,
+      "total": 2
+    },
+    "credential_secret": {
+      "caught": 6,
+      "ci95": [
+        0.6096657083436265,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 6
+    },
+    "customer_confidential": {
+      "caught": 0,
+      "ci95": [
+        0.0,
+        0.5614970356393196
+      ],
+      "recall": 0.0,
+      "total": 3
+    },
+    "direct_identifier": {
+      "caught": 2,
+      "ci95": [
+        0.2076595988078242,
+        0.9385080559790691
+      ],
+      "recall": 0.6666666666666666,
+      "total": 3
+    },
+    "financial": {
+      "caught": 3,
+      "ci95": [
+        0.2307242794091185,
+        0.8823792268590029
+      ],
+      "recall": 0.6,
+      "total": 5
+    },
+    "government_id": {
+      "caught": 3,
+      "ci95": [
+        0.4385029643606803,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 3
+    },
+    "health": {
+      "caught": 6,
+      "ci95": [
+        0.35420213352505864,
+        0.8794161825659264
+      ],
+      "recall": 0.6666666666666666,
+      "total": 9
+    },
+    "political_religious": {
+      "caught": 4,
+      "ci95": [
+        0.5101091596030786,
+        0.9999999999999999
+      ],
+      "recall": 1.0,
+      "total": 4
+    },
+    "sensitive_narrative": {
+      "caught": 0,
+      "ci95": [
+        0.0,
+        0.43448246865939283
+      ],
+      "recall": 0.0,
+      "total": 5
+    },
+    "sexuality": {
+      "caught": 2,
+      "ci95": [
+        0.3423802239546494,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 2
+    }
+  },
+  "by_suite": {
+    "high_risk": {
+      "caught": 21,
+      "ci95": [
+        0.3749736199712279,
+        0.670645299905849
+      ],
+      "recall": 0.525,
+      "total": 40
+    },
+    "secrets": {
+      "caught": 15,
+      "ci95": [
+        0.7961166964035129,
+        1.0
+      ],
+      "recall": 1.0,
+      "total": 15
+    }
+  },
+  "cases": 70,
+  "gates": {
+    "high_risk_lower_ci_bound": 0.3749736199712279,
+    "high_risk_recall_at_least_99pct": false,
+    "note": "Synthetic text only: no ASR errors, accents, noise, or listening tests. Passing here is necessary, not sufficient.",
+    "secrets_zero_misses": true
+  },
+  "misses": [
+    {
+      "category": "direct_identifier",
+      "id": "hr-003",
+      "suite": "high_risk"
+    },
+    {
+      "category": "customer_confidential",
+      "id": "hr-006",
+      "suite": "high_risk"
+    },
+    {
+      "category": "contextual_combination",
+      "id": "hr-007",
+      "suite": "high_risk"
+    },
+    {
+      "category": "health",
+      "id": "hr-012",
+      "suite": "high_risk"
+    },
+    {
+      "category": "contextual_combination",
+      "id": "hr-013",
+      "suite": "high_risk"
+    },
+    {
+      "category": "sensitive_narrative",
+      "id": "hr-014",
+      "suite": "high_risk"
+    },
+    {
+      "category": "sensitive_narrative",
+      "id": "hr-015",
+      "suite": "high_risk"
+    },
+    {
+      "category": "financial",
+      "id": "hr-017",
+      "suite": "high_risk"
+    },
+    {
+      "category": "customer_confidential",
+      "id": "hr-019",
+      "suite": "high_risk"
+    },
+    {
+      "category": "address",
+      "id": "hr-020",
+      "suite": "high_risk"
+    },
+    {
+      "category": "address",
+      "id": "hr-025",
+      "suite": "high_risk"
+    },
+    {
+      "category": "health",
+      "id": "hr-027",
+      "suite": "high_risk"
+    },
+    {
+      "category": "sensitive_narrative",
+      "id": "hr-028",
+      "suite": "high_risk"
+    },
+    {
+      "category": "sensitive_narrative",
+      "id": "hr-030",
+      "suite": "high_risk"
+    },
+    {
+      "category": "address",
+      "id": "hr-031",
+      "suite": "high_risk"
+    },
+    {
+      "category": "customer_confidential",
+      "id": "hr-033",
+      "suite": "high_risk"
+    },
+    {
+      "category": "health",
+      "id": "hr-034",
+      "suite": "high_risk"
+    },
+    {
+      "category": "financial",
+      "id": "hr-038",
+      "suite": "high_risk"
+    },
+    {
+      "category": "sensitive_narrative",
+      "id": "hr-039",
+      "suite": "high_risk"
+    }
+  ],
+  "refused_sessions": [
+    {
+      "id": "hr-022",
+      "reason": "uncertain"
+    },
+    {
+      "id": "hr-023",
+      "reason": "uncertain"
+    }
+  ]
+}

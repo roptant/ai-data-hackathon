@@ -4,6 +4,12 @@
 //! source represents the OS credential store; opening persistent storage fails
 //! closed when that source is unavailable.
 
+pub mod api_clients;
+pub mod contribution;
+pub mod keys;
+pub mod layout;
+pub mod settings;
+
 use std::{fmt, path::Path};
 
 use chacha20poly1305::{
@@ -14,7 +20,7 @@ use rand::RngCore;
 use rusqlite::{Connection, OptionalExtension, params};
 use zeroize::Zeroizing;
 
-const KEY_LEN: usize = 32;
+pub const KEY_LEN: usize = 32;
 const NONCE_LEN: usize = 24;
 
 pub trait MasterKeyProvider {
@@ -67,6 +73,8 @@ pub enum StoreError {
     MissingScope,
     InvalidKeyEnvelope,
     InvalidMetadata,
+    /// A guarded state change lost a race or is not allowed.
+    TransitionConflict,
 }
 
 impl fmt::Display for StoreError {
@@ -83,6 +91,7 @@ impl fmt::Display for StoreError {
             Self::InvalidMetadata => {
                 write!(formatter, "operational metadata contains an invalid token")
             }
+            Self::TransitionConflict => write!(formatter, "state transition conflict"),
         }
     }
 }
@@ -95,8 +104,20 @@ impl From<rusqlite::Error> for StoreError {
     }
 }
 
+/// Encryption scope holding one session's raw working data.
+#[must_use]
+pub fn session_scope_id(session_id: &str) -> String {
+    format!("session:{session_id}")
+}
+
+/// Encryption scope holding one job's eligible upload package.
+#[must_use]
+pub fn package_scope_id(job_id: &str) -> String {
+    format!("package:{job_id}")
+}
+
 pub struct EncryptedStore {
-    connection: Connection,
+    pub(crate) connection: Connection,
     master_key: Zeroizing<[u8; KEY_LEN]>,
 }
 
@@ -172,6 +193,9 @@ impl EncryptedStore {
              CREATE INDEX IF NOT EXISTS scopes_expiry_idx ON encryption_scopes(expires_at);
              CREATE INDEX IF NOT EXISTS metadata_expiry_idx ON operational_metadata(expires_at);",
         )?;
+        self.connection.execute_batch(contribution::SCHEMA)?;
+        self.connection.execute_batch(settings::SCHEMA)?;
+        self.connection.execute_batch(api_clients::SCHEMA)?;
         Ok(())
     }
 
@@ -354,7 +378,7 @@ fn safe_metadata_token(value: &str, maximum_length: usize) -> bool {
         })
 }
 
-fn seal(key: &[u8; KEY_LEN], plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, StoreError> {
+pub(crate) fn seal(key: &[u8; KEY_LEN], plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, StoreError> {
     let cipher = XChaCha20Poly1305::new(key.into());
     let nonce = XChaCha20Poly1305::generate_nonce(&mut OsRng);
     let ciphertext = cipher
@@ -372,7 +396,7 @@ fn seal(key: &[u8; KEY_LEN], plaintext: &[u8], aad: &[u8]) -> Result<Vec<u8>, St
     Ok(envelope)
 }
 
-fn open(key: &[u8; KEY_LEN], envelope: &[u8], aad: &[u8]) -> Result<Vec<u8>, StoreError> {
+pub(crate) fn open(key: &[u8; KEY_LEN], envelope: &[u8], aad: &[u8]) -> Result<Vec<u8>, StoreError> {
     if envelope.len() <= NONCE_LEN {
         return Err(StoreError::InvalidKeyEnvelope);
     }
@@ -389,10 +413,10 @@ fn open(key: &[u8; KEY_LEN], envelope: &[u8], aad: &[u8]) -> Result<Vec<u8>, Sto
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+pub(crate) mod test_support {
+    use super::{EncryptedStore, KEY_LEN, MasterKeyProvider};
 
-    struct TestKeys(Option<[u8; KEY_LEN]>);
+    pub struct TestKeys(pub Option<[u8; KEY_LEN]>);
 
     impl MasterKeyProvider for TestKeys {
         fn load_or_create(&self) -> Result<Option<[u8; KEY_LEN]>, String> {
@@ -400,9 +424,15 @@ mod tests {
         }
     }
 
-    fn store() -> EncryptedStore {
+    pub fn store() -> EncryptedStore {
         EncryptedStore::open_in_memory(&TestKeys(Some([7; KEY_LEN]))).unwrap()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::{TestKeys, store};
 
     #[test]
     fn secure_key_unavailability_disables_persistence() {

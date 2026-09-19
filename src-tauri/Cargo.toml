@@ -14,10 +14,26 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+dictation-api = { path = "../crates/dictation-api" }
 dictation-core = { path = "../crates/dictation-core" }
+dictation-engine = { path = "../crates/dictation-engine" }
+dictation-models = { path = "../crates/dictation-models" }
 dictation-platform = { path = "../crates/dictation-platform" }
+dictation-protocol = { path = "../crates/dictation-protocol" }
+dictation-storage = { path = "../crates/dictation-storage" }
+ed25519-dalek = "2"
+hex = "0.4"
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tauri = { version = "2", features = [] }
+tauri-plugin-global-shortcut = "2"
+tokio = { version = "1", features = ["sync"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ksni = "0.3.6"
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
 
 [lints]
 workspace = true

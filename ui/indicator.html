@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Local Dictation indicator</title>
+    <link rel="stylesheet" href="indicator.css" />
+  </head>
+  <body>
+    <div id="indicator" data-state="idle" role="status" aria-live="assertive">
+      <span id="symbol" aria-hidden="true"></span>
+      <span class="text"><span id="state">Idle</span> <span id="elapsed"></span><span id="caption" class="caption"></span></span>
+      <button data-action="stop" title="Stop and insert" aria-label="Stop and insert">■</button>
+      <button data-action="cancel" title="Cancel without inserting" aria-label="Cancel without inserting">✕</button>
+    </div>
+    <script type="module" src="indicator.js"></script>
+  </body>
+</html>

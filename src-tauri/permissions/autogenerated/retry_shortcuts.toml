@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-retry-shortcuts"
+description = "Enables the retry_shortcuts command without any pre-configured scope."
+commands.allow = ["retry_shortcuts"]
+
+[[permission]]
+identifier = "deny-retry-shortcuts"
+description = "Denies the retry_shortcuts command without any pre-configured scope."
+commands.deny = ["retry_shortcuts"]

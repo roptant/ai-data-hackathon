@@ -7,8 +7,26 @@ rust-version.workspace = true
 description = "Native platform adapters for Local Dictation"
 
 [dependencies]
+arboard = { version = "3.6.1", default-features = false }
 cpal = "0.18.2"
 dictation-core = { path = "../dictation-core" }
+enigo = "0.6.1"
+tokio = { version = "1", features = ["sync"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+arboard = { version = "3.6.1", default-features = false, features = ["wayland-data-control"] }
+ashpd = { version = "0.13.13", default-features = false, features = ["tokio", "global_shortcuts", "remote_desktop", "screencast"] }
+atspi = { version = "0.30.0", default-features = false, features = ["proxies", "connection", "tokio"] }
+futures-util = "0.3"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+x11rb = "0.13"
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+active-win-pos-rs = "0.9"
 
 [lints]
 workspace = true
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }

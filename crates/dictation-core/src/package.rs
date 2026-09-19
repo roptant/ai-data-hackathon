@@ -590,6 +590,240 @@ fn sha256_hex(payload: &[u8]) -> String {
     output
 }
 
+/// Identity and provenance fields written into an upload package manifest.
+///
+/// Tenant, device, and session identity are deliberately absent: the server
+/// derives ownership from authentication, never from package contents.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackageHeader {
+    pub eligibility_version: u64,
+    /// `sample-` followed by 32 random lowercase hex digits.
+    pub sample_id: String,
+    pub language: String,
+    pub asr_model: String,
+    pub asr_model_revision: String,
+    pub privacy_model: String,
+    pub privacy_model_revision: String,
+    pub policy_version: String,
+    pub consent_version: String,
+    pub consent_reference: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BuiltPackage {
+    pub manifest: Value,
+    pub payloads: BTreeMap<String, Vec<u8>>,
+}
+
+/// Canonical 16 kHz mono 16-bit PCM WAV.
+#[must_use]
+pub fn encode_wav(samples: &[i16], sample_rate: u32) -> Vec<u8> {
+    let data_size = u32::try_from(samples.len() * 2).unwrap_or(u32::MAX);
+    let mut output = Vec::with_capacity(44 + samples.len() * 2);
+    output.extend_from_slice(b"RIFF");
+    output.extend_from_slice(&data_size.saturating_add(36).to_le_bytes());
+    output.extend_from_slice(b"WAVEfmt ");
+    output.extend_from_slice(&16_u32.to_le_bytes());
+    output.extend_from_slice(&1_u16.to_le_bytes());
+    output.extend_from_slice(&1_u16.to_le_bytes());
+    output.extend_from_slice(&sample_rate.to_le_bytes());
+    output.extend_from_slice(&(sample_rate * 2).to_le_bytes());
+    output.extend_from_slice(&2_u16.to_le_bytes());
+    output.extend_from_slice(&16_u16.to_le_bytes());
+    output.extend_from_slice(b"data");
+    output.extend_from_slice(&data_size.to_le_bytes());
+    for sample in samples {
+        output.extend_from_slice(&sample.to_le_bytes());
+    }
+    output
+}
+
+/// Builds the allowlisted manifest and payloads for an eligible result.
+///
+/// Only retained clips, their text, and aggregate metrics are included. The
+/// boundary manifest, removal intervals, source offsets, and original text
+/// never enter a package.
+///
+/// # Errors
+///
+/// Returns an error when the result is not eligible or the produced package
+/// fails the same validation the server applies.
+pub fn build_package(
+    result: &crate::dataset::BuildResult,
+    header: &PackageHeader,
+    sample_rate: u32,
+    limits: PackageLimits,
+) -> Result<BuiltPackage, PackageError> {
+    if !result.eligible() || result.clips.is_empty() {
+        return Err(PackageError::new("not_eligible", "result is not eligible"));
+    }
+    result
+        .assert_no_removed_audio()
+        .map_err(|code| PackageError::new("removed_audio_in_output", code))?;
+    let mut payloads = BTreeMap::new();
+    let mut clips = Vec::new();
+    let mut checksums = Map::new();
+    for (index, clip) in result.clips.iter().enumerate() {
+        let audio_name = format!("clip-{index:03}.wav");
+        let text_name = format!("clip-{index:03}.txt");
+        let audio = encode_wav(&clip.pcm, sample_rate);
+        let text = clip.text.clone().into_bytes();
+        let audio_hash = sha256_hex(&audio);
+        checksums.insert(audio_name.clone(), Value::from(audio_hash.clone()));
+        checksums.insert(text_name.clone(), Value::from(sha256_hex(&text)));
+        clips.push(serde_json::json!({
+            "audio": audio_name,
+            "text": text_name,
+            "duration_ms": clip.duration_ms,
+            "word_count": clip.word_count(),
+            "sha256": audio_hash,
+        }));
+        payloads.insert(audio_name, audio);
+        payloads.insert(text_name, text);
+    }
+    let metrics = result.metrics;
+    let round = |value: f32| (f64::from(value) * 10_000.0).round() / 10_000.0;
+    let manifest = serde_json::json!({
+        "eligibility_version": header.eligibility_version,
+        "sample_id": header.sample_id,
+        "sample_rate": sample_rate,
+        "language": header.language,
+        "duration_ms": metrics.duration_ms,
+        "clip_count": result.clips.len(),
+        "quality": {
+            "duration_ms": metrics.duration_ms,
+            "word_count": metrics.word_count,
+            "mean_confidence": round(metrics.mean_confidence),
+            "speech_ratio": round(metrics.speech_ratio),
+            "removed_interval_count": metrics.removed_interval_count,
+            "removed_duration_ms": metrics.removed_duration_ms,
+            "clip_count": metrics.clip_count,
+        },
+        "asr_model": header.asr_model,
+        "asr_model_revision": header.asr_model_revision,
+        "privacy_model": header.privacy_model,
+        "privacy_model_revision": header.privacy_model_revision,
+        "policy_version": header.policy_version,
+        "consent_version": header.consent_version,
+        "consent_reference": header.consent_reference,
+        "clips": clips,
+        "checksums": checksums,
+    });
+    validate_package(
+        &manifest,
+        &payloads,
+        &BTreeSet::from([header.eligibility_version]),
+        limits,
+    )?;
+    Ok(BuiltPackage { manifest, payloads })
+}
+
+/// Serializes a built package as a ustar archive held in memory:
+/// `manifest.json` followed by the payloads in name order.
+///
+/// # Errors
+///
+/// Fails only if an entry cannot be encoded.
+pub fn encode_archive(package: &BuiltPackage) -> Result<Vec<u8>, PackageError> {
+    let mut builder = tar::Builder::new(Vec::new());
+    builder.mode(tar::HeaderMode::Deterministic);
+    let manifest = serde_json::to_vec(&package.manifest)
+        .map_err(|_| PackageError::new("archive_encode_failed", "manifest"))?;
+    let entries = std::iter::once(("manifest.json", manifest.as_slice())).chain(
+        package
+            .payloads
+            .iter()
+            .map(|(name, payload)| (name.as_str(), payload.as_slice())),
+    );
+    for (name, payload) in entries {
+        let mut header = tar::Header::new_ustar();
+        header.set_size(payload.len() as u64);
+        header.set_mode(0o600);
+        header.set_entry_type(tar::EntryType::Regular);
+        header.set_mtime(0);
+        builder
+            .append_data(&mut header, name, payload)
+            .map_err(|_| PackageError::new("archive_encode_failed", name))?;
+    }
+    builder
+        .into_inner()
+        .map_err(|_| PackageError::new("archive_encode_failed", "finish"))
+}
+
+/// Extracts `manifest.json` and payloads from an untrusted archive without
+/// touching the filesystem. Only flat regular files with safe names are
+/// accepted; sizes are bounded before allocation.
+///
+/// # Errors
+///
+/// Returns an error for any link, directory, nested path, duplicate, oversized
+/// entry, or malformed manifest.
+pub fn decode_archive(
+    bytes: &[u8],
+    limits: PackageLimits,
+) -> Result<(Value, BTreeMap<String, Vec<u8>>), PackageError> {
+    use std::io::Read as _;
+    if bytes.len() as u64 > limits.max_payload_bytes.saturating_add(1 << 20) {
+        return Err(PackageError::new("package_too_large", bytes.len().to_string()));
+    }
+    let mut archive = tar::Archive::new(bytes);
+    let mut manifest = None;
+    let mut payloads = BTreeMap::new();
+    let entries = archive
+        .entries()
+        .map_err(|_| PackageError::new("malformed_archive", "entries"))?;
+    for (count, entry) in entries.enumerate() {
+        if count > limits.max_clips * 2 + 1 {
+            return Err(PackageError::new("too_many_archive_entries", count.to_string()));
+        }
+        let mut entry = entry.map_err(|_| PackageError::new("malformed_archive", "entry"))?;
+        if entry.header().entry_type() != tar::EntryType::Regular {
+            return Err(PackageError::new("unsafe_archive_entry", "non-regular entry"));
+        }
+        let name = entry
+            .path()
+            .map_err(|_| PackageError::new("unsafe_archive_entry", "path"))?
+            .to_str()
+            .map(str::to_owned)
+            .ok_or_else(|| PackageError::new("unsafe_archive_entry", "non-utf8 path"))?;
+        if !safe_entry_name(&name) {
+            return Err(PackageError::new("unsafe_archive_entry", name));
+        }
+        let size = entry.header().size().unwrap_or(u64::MAX);
+        if size > limits.max_clip_bytes {
+            return Err(PackageError::new("package_file_too_large", name));
+        }
+        let mut payload = Vec::with_capacity(usize::try_from(size).unwrap_or(0));
+        entry
+            .by_ref()
+            .take(limits.max_clip_bytes + 1)
+            .read_to_end(&mut payload)
+            .map_err(|_| PackageError::new("malformed_archive", name.clone()))?;
+        if payload.len() as u64 != size {
+            return Err(PackageError::new("malformed_archive", name));
+        }
+        if name == "manifest.json" {
+            if manifest.is_some() {
+                return Err(PackageError::new("duplicate_archive_entry", name));
+            }
+            manifest = Some(
+                serde_json::from_slice::<Value>(&payload)
+                    .map_err(|_| PackageError::new("package_manifest_not_object", "json"))?,
+            );
+        } else if payloads.insert(name.clone(), payload).is_some() {
+            return Err(PackageError::new("duplicate_archive_entry", name));
+        }
+    }
+    let manifest = manifest.ok_or_else(|| PackageError::new("package_missing_file", "manifest.json"))?;
+    Ok((manifest, payloads))
+}
+
+/// Hex SHA-256 digest used for manifest checksums.
+#[must_use]
+pub fn sha256_digest_hex(payload: &[u8]) -> String {
+    sha256_hex(payload)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -658,6 +892,34 @@ mod tests {
             &BTreeSet::from([1]),
             PackageLimits::default(),
         )
+    }
+
+    #[test]
+    fn archives_round_trip_and_reject_traversal() {
+        let (manifest, payloads) = valid_fixture();
+        let package = BuiltPackage { manifest, payloads };
+        let bytes = encode_archive(&package).unwrap();
+        let (manifest, payloads) = decode_archive(&bytes, PackageLimits::default()).unwrap();
+        assert_eq!(manifest, package.manifest);
+        assert_eq!(payloads, package.payloads);
+
+        let mut builder = tar::Builder::new(Vec::new());
+        let mut header = tar::Header::new_gnu();
+        header.set_size(1);
+        header.set_entry_type(tar::EntryType::Regular);
+        header.set_cksum();
+        builder.append_data(&mut header, "nested/evil.txt", &b"x"[..]).unwrap();
+        let hostile = builder.into_inner().unwrap();
+        assert_eq!(
+            decode_archive(&hostile, PackageLimits::default()).unwrap_err().code,
+            "unsafe_archive_entry"
+        );
+    }
+
+    #[test]
+    fn encoded_wav_is_canonical() {
+        let (_, payloads) = valid_fixture();
+        assert_eq!(encode_wav(&[0; 16_000], 16_000), payloads["clip-000.wav"]);
     }
 
     #[test]

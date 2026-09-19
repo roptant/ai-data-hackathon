@@ -1,6 +1,24 @@
-//! Native capability probes and microphone capture.
+//! Native capability probes, microphone capture, and desktop integration.
 
+pub mod clipboard;
+pub mod desktop;
+#[cfg(target_os = "linux")]
+pub mod linux;
 pub mod microphone;
+
+/// Shortcut vocabulary shared with the pure core.
+pub mod shortcuts {
+    pub use dictation_core::shortcuts::{
+        Chord, ShortcutAction, ShortcutBindings, ShortcutEvent, ShortcutInterpreter,
+    };
+}
+
+/// Which lifecycle watchers are active on this platform.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct LifecycleReport {
+    pub sleep: bool,
+    pub screen_lock: bool,
+}
 
 use cpal::traits::{DeviceTrait, HostTrait};
 use dictation_core::platform::{Capability, PlatformCapabilities};

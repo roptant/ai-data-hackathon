@@ -1,0 +1,5 @@
+[env]
+# Keep quantized llama.cpp weights memory-mapped instead of repacking them into
+# anonymous memory; the repack roughly doubles resident memory on the 8 GB
+# baseline (measured in docs/BENCHMARKS.md).
+GGML_CPU_REPACK = "OFF"

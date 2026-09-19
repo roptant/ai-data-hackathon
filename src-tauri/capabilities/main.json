@@ -1,8 +1,35 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-window",
-  "description": "Minimal capability for the migration status window",
+  "description": "Settings, consent, models, pairing, and the local result panel. No filesystem, shell, or network permissions.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-get-status",
+    "allow-get-settings",
+    "allow-update-settings",
+    "allow-capability-matrix",
+    "allow-recording-action",
+    "allow-do-not-contribute",
+    "allow-get-result",
+    "allow-copy-result",
+    "allow-dismiss-result",
+    "allow-list-models",
+    "allow-install-model",
+    "allow-cancel-model-download",
+    "allow-import-model",
+    "allow-get-disclosure",
+    "allow-grant-consent",
+    "allow-set-contribution-paused",
+    "allow-withdraw-consent",
+    "allow-delete-training-data",
+    "allow-contribution-history",
+    "allow-list-pairings",
+    "allow-approve-pairing",
+    "allow-deny-pairing",
+    "allow-list-clients",
+    "allow-revoke-client",
+    "allow-retry-shortcuts"
+  ]
 }
-

@@ -3,17 +3,11 @@
   "private": true,
   "version": "0.2.0",
   "type": "module",
+  "description": "TypeScript UI compiled with tsc only; no bundler or runtime dependencies. The Tauri API is used through the injected global.",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 1420",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 1420"
-  },
-  "dependencies": {
-    "@tauri-apps/api": "^2.0.0"
+    "build": "tsc -p tsconfig.json && node ../scripts/copy-ui-assets.mjs"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "vite": "^7.0.0"
+    "typescript": "5.9.3"
   }
 }
-

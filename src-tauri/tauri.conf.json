@@ -4,29 +4,64 @@
   "version": "0.2.0",
   "identifier": "app.localdictation.desktop",
   "build": {
-    "beforeDevCommand": "npm --prefix ../ui run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm --prefix ../ui run build",
+    "beforeBuildCommand": "sh scripts/build-ui.sh",
+    "beforeDevCommand": "sh scripts/build-ui.sh",
     "frontendDist": "../ui/dist"
   },
   "app": {
+    "withGlobalTauri": true,
     "security": {
-      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; script-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "freezePrototype": true
     },
     "windows": [
       {
         "label": "main",
         "title": "Local Dictation",
-        "width": 920,
-        "height": 640,
-        "minWidth": 720,
-        "minHeight": 520,
-        "resizable": true
+        "url": "index.html",
+        "width": 960,
+        "height": 720,
+        "minWidth": 640,
+        "minHeight": 480,
+        "resizable": true,
+        "visible": false
       }
     ]
   },
   "bundle": {
-    "active": false,
-    "icon": ["icons/icon.png"]
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png"
+    ],
+    "category": "Productivity",
+    "shortDescription": "Private local dictation",
+    "longDescription": "Local speech recognition with optional, privacy-filtered personalization.",
+    "externalBin": [
+      "binaries/dictation-asr-worker",
+      "binaries/dictation-privacy-worker"
+    ],
+    "linux": {
+      "deb": {
+        "depends": [],
+        "files": {
+          "/usr/share/applications/app.localdictation.desktop.desktop": "linux/app.localdictation.desktop.desktop"
+        }
+      },
+      "rpm": {
+        "files": {
+          "/usr/share/applications/app.localdictation.desktop.desktop": "linux/app.localdictation.desktop.desktop"
+        }
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "entitlements": "entitlements.plist"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      }
+    }
   }
 }

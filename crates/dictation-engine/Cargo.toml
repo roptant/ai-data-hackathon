@@ -1,0 +1,28 @@
+[package]
+name = "dictation-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Model workers, training pipeline, and upload queue orchestration for Local Dictation"
+
+[dependencies]
+dictation-core = { path = "../dictation-core" }
+dictation-models = { path = "../dictation-models" }
+dictation-storage = { path = "../dictation-storage" }
+dictation-protocol = { path = "../dictation-protocol" }
+dictation-worker = { path = "../dictation-worker" }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "json"] }
+sha2 = "0.10"
+hex = "0.4"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+dictation-server = { path = "../dictation-server" }
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "net"] }

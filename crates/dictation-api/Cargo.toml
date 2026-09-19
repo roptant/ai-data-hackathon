@@ -1,0 +1,25 @@
+[package]
+name = "dictation-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Loopback-only, scoped, paired local API for Local Dictation"
+
+[dependencies]
+axum = { version = "0.8", features = ["ws"] }
+dictation-storage = { path = "../dictation-storage" }
+rand = "0.8"
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "sync", "time"] }
+
+[dev-dependencies]
+tokio-tungstenite = "0.26"
+futures-util = "0.3"
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+tokio = { version = "1", features = ["rt", "macros", "time"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-revoke-client"
+description = "Enables the revoke_client command without any pre-configured scope."
+commands.allow = ["revoke_client"]
+
+[[permission]]
+identifier = "deny-revoke-client"
+description = "Denies the revoke_client command without any pre-configured scope."
+commands.deny = ["revoke_client"]

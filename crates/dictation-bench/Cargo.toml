@@ -1,0 +1,22 @@
+[package]
+name = "dictation-bench"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Model and platform benchmark harness for Local Dictation"
+
+[[bin]]
+name = "dictation-bench"
+path = "src/main.rs"
+
+[dependencies]
+dictation-core = { path = "../dictation-core" }
+dictation-engine = { path = "../dictation-engine" }
+dictation-models = { path = "../dictation-models" }
+dictation-worker = { path = "../dictation-worker" }
+hound = "3.5.1"
+serde_json = "1"
+
+[lints]
+workspace = true

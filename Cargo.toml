@@ -4,6 +4,14 @@ members = [
     "crates/dictation-storage",
     "crates/dictation-worker",
     "crates/dictation-platform",
+    "workers/asr",
+    "workers/privacy",
+    "crates/dictation-bench",
+    "crates/dictation-models",
+    "crates/dictation-engine",
+    "crates/dictation-protocol",
+    "crates/dictation-server",
+    "crates/dictation-api",
     "src-tauri",
 ]
 resolver = "2"
