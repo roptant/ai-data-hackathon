@@ -1,0 +1,22 @@
+[workspace]
+members = [
+    "crates/dictation-core",
+    "crates/dictation-storage",
+    "crates/dictation-worker",
+    "crates/dictation-platform",
+    "src-tauri",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.2.0"
+edition = "2024"
+license = "UNLICENSED"
+rust-version = "1.85"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"

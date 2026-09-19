@@ -1,0 +1,17 @@
+[package]
+name = "dictation-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Privacy-critical domain core for Local Dictation"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+serde_json = "1"
+sha2 = "0.10"
+
+[lints]
+workspace = true

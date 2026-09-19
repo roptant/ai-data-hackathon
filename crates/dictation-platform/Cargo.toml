@@ -1,0 +1,14 @@
+[package]
+name = "dictation-platform"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Native platform adapters for Local Dictation"
+
+[dependencies]
+cpal = "0.18.2"
+dictation-core = { path = "../dictation-core" }
+
+[lints]
+workspace = true

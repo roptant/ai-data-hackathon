@@ -1,0 +1,12 @@
+# Rust and Tauri
+/target/
+**/target/
+src-tauri/gen/
+
+# TypeScript/Vite
+ui/node_modules/
+ui/dist/
+
+# Local application artifacts
+.local-dictation/
+

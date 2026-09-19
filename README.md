@@ -1,5 +1,11 @@
 # Local dictation with privacy-filtered personalization
 
+> **Rust/Tauri migration in progress.** The target implementation now lives in
+> `crates/dictation-core`, `src-tauri`, and `ui`. The Python implementation below
+> remains the behavioral reference until the Rust port reaches parity; it is not
+> the planned production architecture. See
+> [docs/RUST_MIGRATION.md](docs/RUST_MIGRATION.md) for scope and progress.
+
 A reference implementation of [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md):
 a dictation application that keeps recognition local, delivers the **full**
 transcript to the user, and builds a separate, optional, privacy-filtered

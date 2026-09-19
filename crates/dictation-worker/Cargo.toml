@@ -1,0 +1,10 @@
+[package]
+name = "dictation-worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Bounded private worker IPC for Local Dictation models"
+
+[lints]
+workspace = true

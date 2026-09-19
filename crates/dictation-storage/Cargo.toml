@@ -1,0 +1,16 @@
+[package]
+name = "dictation-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Encrypted local storage and retention for Local Dictation"
+
+[dependencies]
+chacha20poly1305 = "0.10"
+rand = "0.8"
+rusqlite = { version = "0.37", features = ["bundled"] }
+zeroize = "1"
+
+[lints]
+workspace = true
