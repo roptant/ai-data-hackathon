@@ -251,6 +251,9 @@ impl ShortcutInterpreter {
                 ShortcutAction::Cancel => Interpreted::Apply(Event::Cancel),
             }
         } else {
+            if !self.held[index] {
+                return Interpreted::Ignore;
+            }
             self.held[index] = false;
             if event.action == ShortcutAction::Hold {
                 let deadline_ms = now_ms + HOLD_RELEASE_GRACE_MS;
@@ -311,6 +314,17 @@ mod tests {
         let mut interpreter = ShortcutInterpreter::default();
         assert_eq!(interpreter.handle(press(ShortcutAction::Hold), 0), Interpreted::Apply(Event::HoldDown));
         assert_eq!(interpreter.handle(press(ShortcutAction::Hold), 30), Interpreted::Ignore);
+    }
+
+    #[test]
+    fn toggle_release_and_repeat_do_not_stop_recording() {
+        let mut interpreter = ShortcutInterpreter::default();
+        assert_eq!(interpreter.handle(press(ShortcutAction::Toggle), 0), Interpreted::Apply(Event::Toggle));
+        assert_eq!(interpreter.handle(press(ShortcutAction::Toggle), 10), Interpreted::Ignore);
+        assert_eq!(interpreter.handle(release(ShortcutAction::Toggle), 20), Interpreted::Ignore);
+        assert_eq!(interpreter.handle(release(ShortcutAction::Hold), 25), Interpreted::Ignore);
+        assert_eq!(interpreter.poll(500), None);
+        assert_eq!(interpreter.handle(press(ShortcutAction::Toggle), 600), Interpreted::Apply(Event::Toggle));
     }
 
     #[test]

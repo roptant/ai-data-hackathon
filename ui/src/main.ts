@@ -44,6 +44,9 @@ const live = document.querySelector<HTMLElement>("#live");
 let status: StatusView | null = null;
 let settings: SettingsView | null = null;
 let page = "dictate";
+let modelMessage = "";
+let customSource = "";
+let customChecksum = "";
 
 function announce(message: string): void {
   if (live) live.textContent = message;
@@ -125,6 +128,7 @@ async function dictatePage(): Promise<HTMLElement[]> {
       "Dictation",
       h("p", { class: "state", role: "status" }, stateText[status?.recordingState ?? "idle"] ?? status?.recordingState ?? ""),
       status?.notice ? h("p", { class: "notice" }, status.notice.replaceAll("_", " ")) : null,
+      status?.microphoneError ? h("p", { class: "notice", role: "alert" }, status.microphoneError) : null,
       h(
         "div",
         { class: "buttons" },
@@ -137,8 +141,9 @@ async function dictatePage(): Promise<HTMLElement[]> {
         status?.asrReady ? "Speech recognition is loaded." : status?.asrLoading ? "Loading speech recognition…" : "Speech recognition is not loaded yet; install a model under Setup.",
       ),
       triggers.length
-        ? h("ul", { class: "triggers" }, ...triggers.map(([action, trigger]) => h("li", {}, `${action}: ${trigger || "(set in system settings)"}`)))
+        ? h("ul", { class: "triggers" }, ...triggers.map(([action, trigger]) => h("li", {}, `${action === "hold" ? "Hold down to record; release to stop" : action === "toggle" ? "Press once to start; press again to stop" : action}: ${trigger || "(set in system settings)"}`)))
         : h("p", { class: "notice" }, "Global shortcuts are not active. Use the buttons, tray menu, or Setup."),
+      status?.asrError ? h("p", { class: "notice", role: "alert" }, status.asrError) : null,
     ),
     section(
       "Result not inserted automatically",
@@ -166,6 +171,8 @@ async function setupPage(): Promise<HTMLElement[]> {
   const models = await invoke<ModelInfo[]>("list_models");
   const current = settings;
   if (!current) return [];
+  const source = h("input", { value: customSource, placeholder: "Local .bin file path or direct HTTPS download URL", oninput: (event) => { customSource = (event.target as HTMLInputElement).value; } });
+  const checksum = h("input", { value: customChecksum, placeholder: "Required for URL downloads; optional for local files", oninput: (event) => { customChecksum = (event.target as HTMLInputElement).value; } });
   const shortcutInputs = Object.entries(current.shortcuts).map(([name, value]) => {
     const input = h("input", { value: String(value), "aria-label": `${name} shortcut` });
     return [name, input] as const;
@@ -196,13 +203,24 @@ async function setupPage(): Promise<HTMLElement[]> {
                   ? model.role === "asr"
                     ? h("button", { disabled: current.asrModel === model.id, onclick: () => updateSettings({ asrModel: model.id }, "Recognition model selected.") }, current.asrModel === model.id ? "In use" : "Use")
                     : "Installed"
+                  : model.id === "custom-whisper" ? "Import the file again below"
                   : h("button", { onclick: () => run(() => invoke("install_model", { id: model.id }), "Download started.") }, "Download"),
               ),
             ),
           ),
         ),
       ),
-      h("p", { id: "download-progress", role: "status" }),
+      h("p", { id: "download-progress", role: "status" }, modelMessage),
+      h("button", { onclick: () => run(() => invoke("cancel_model_download")) }, "Cancel installation"),
+      status?.asrError ? h("p", { class: "notice", role: "alert" }, status.asrError) : null,
+    ),
+    section(
+      "Custom speech model",
+      h("p", {}, "Choose whisper.cpp GGML .bin weights. Hugging Face safetensors models need conversion first; a repository URL is not a model file. Importing copies the file into app storage and selects it for recognition."),
+      h("label", { class: "field" }, "Model file or direct download URL", source),
+      h("button", { onclick: () => { void invoke<string | null>("choose_model_file").then((path) => { if (path) { customSource = path; source.value = path; } }).catch((error: unknown) => window.alert(String(error))); } }, "Browse…"),
+      h("label", { class: "field" }, "SHA-256", checksum),
+      h("button", { onclick: () => run(() => invoke("install_custom_model", { source: source.value, sha256: checksum.value }), "Custom model installation started.") }, "Import / download and use"),
     ),
     section(
       "Automatic insertion",
@@ -223,6 +241,7 @@ async function setupPage(): Promise<HTMLElement[]> {
     section(
       "Shortcuts",
       h("p", {}, "Hold to dictate, press toggle to start or stop, press lock while holding to keep recording. Escape cancels while recording (on Wayland the cancel chord is used instead)."),
+      h("button", { onclick: () => updateSettings({ shortcuts: { ...current.shortcuts, hold: current.shortcuts.toggle, toggle: current.shortcuts.hold } }, "Hold and toggle shortcuts swapped.") }, `Use ${current.shortcuts.hold} as start/stop toggle`),
       ...shortcutInputs.map(([name, input]) => h("label", { class: "field" }, name.replace("_", " "), input)),
       h(
         "button",
@@ -351,6 +370,7 @@ async function integrationsPage(): Promise<HTMLElement[]> {
     ),
     section(
       "Pairing requests",
+      h("button", { onclick: () => { void refresh(); } }, "Refresh pairing requests"),
       pairings.length
         ? h(
             "div",
@@ -456,7 +476,7 @@ async function refresh(): Promise<void> {
 
 let refreshTimer: number | undefined;
 void listen<StatusView>("status", (next) => {
-  const changed = next.recordingState !== status?.recordingState || next.notice !== status?.notice || next.asrReady !== status?.asrReady;
+  const changed = next.recordingState !== status?.recordingState || next.notice !== status?.notice || next.asrReady !== status?.asrReady || next.asrError !== status?.asrError || next.asrLoading !== status?.asrLoading;
   status = next;
   if (changed) {
     announce(stateText[next.recordingState] ?? next.recordingState);
@@ -466,11 +486,13 @@ void listen<StatusView>("status", (next) => {
 });
 void listen<string>("result-ready", () => void refresh());
 void listen<[string, number, number]>("model-progress", ([id, received, total]) => {
+  modelMessage = total ? `${id}: ${megabytes(received)} of ${megabytes(total)}` : `${id}: ${megabytes(received)} received`;
   const element = document.querySelector("#download-progress");
-  if (element) element.textContent = `${id}: ${megabytes(received)} of ${megabytes(total)}`;
+  if (element) element.textContent = modelMessage;
 });
 void listen<[string, string | null]>("model-installed", ([id, error]) => {
-  announce(error ? `${id} failed: ${error}` : `${id} installed and verified.`);
+  modelMessage = error ? `${id} failed: ${error}` : `${id} installed and verified.`;
+  announce(modelMessage);
   void refresh();
 });
 void refresh();

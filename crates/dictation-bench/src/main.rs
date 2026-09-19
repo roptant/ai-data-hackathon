@@ -155,6 +155,7 @@ fn asr(options: &Options) -> Result<Value, String> {
         let request_id = worker.next_request_id();
         let request = Request::Transcribe(TranscribeRequest {
             request_id,
+            stream_epoch: None,
             language: options.get("language").map(str::to_owned),
             initial_prompt: None,
             final_pass: options.flag("final"),

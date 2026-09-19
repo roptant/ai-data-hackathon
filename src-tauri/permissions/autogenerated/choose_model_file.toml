@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-choose-model-file"
+description = "Enables the choose_model_file command without any pre-configured scope."
+commands.allow = ["choose_model_file"]
+
+[[permission]]
+identifier = "deny-choose-model-file"
+description = "Denies the choose_model_file command without any pre-configured scope."
+commands.deny = ["choose_model_file"]

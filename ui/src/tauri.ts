@@ -52,6 +52,8 @@ export interface StatusView {
   notice: string | null;
   asrReady: boolean;
   asrLoading: boolean;
+  asrError: string | null;
+  microphoneError: string | null;
   privacyModelReady: boolean;
   storageAvailable: boolean;
   contributionEnabled: boolean;

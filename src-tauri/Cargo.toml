@@ -8,7 +8,7 @@ description = "Tauri desktop shell for Local Dictation"
 
 [lib]
 name = "local_dictation_desktop_lib"
-crate-type = ["lib", "cdylib", "staticlib"]
+crate-type = ["lib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -23,6 +23,7 @@ dictation-protocol = { path = "../crates/dictation-protocol" }
 dictation-storage = { path = "../crates/dictation-storage" }
 ed25519-dalek = "2"
 hex = "0.4"
+rfd = "0.15"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = [] }

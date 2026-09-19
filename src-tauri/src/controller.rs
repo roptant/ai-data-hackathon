@@ -209,14 +209,17 @@ impl Controller {
             }
         }
         // Device removal or permission revocation surfaces as a stream error.
-        let capture_failed = self
+        let capture_error = self
             .active
             .as_ref()
             .and_then(|active| active.capture.as_ref())
-            .is_some_and(|capture| capture.check_runtime().is_err());
-        if capture_failed && self.machine.state().is_recording() {
-            self.notice("microphone_failure");
-            self.apply(Event::Cancel);
+            .and_then(|capture| capture.check_runtime().err());
+        if let Some(error) = capture_error {
+            if self.machine.state().is_recording() {
+                self.shared.publish(|status| status.microphone_error = Some(error.to_string()));
+                self.notice("microphone_failure");
+                self.apply(Event::Cancel);
+            }
         }
         self.schedule_partial();
         if let Some(since) = self.error_since {
@@ -324,11 +327,15 @@ impl Controller {
                     final_segments: Vec::new(),
                     language: String::new(),
                 });
-                self.shared.publish(|status| status.notice = None);
+                self.shared.publish(|status| {
+                    status.notice = None;
+                    status.microphone_error = None;
+                });
                 self.asr.send(AsrRequest::Warm);
                 Event::CaptureStarted
             }
             Err(error) => {
+                self.shared.publish(|status| status.microphone_error = Some(error.to_string()));
                 let code = match error {
                     dictation_platform::microphone::CaptureError::NoInputDevice => "no_microphone",
                     dictation_platform::microphone::CaptureError::DefaultConfig(_) => "microphone_permission_or_config",

@@ -7,6 +7,7 @@
 //! dictation works offline once models are installed.
 
 pub mod delivery;
+pub mod custom;
 
 use std::{
     fmt,
@@ -54,7 +55,9 @@ const QWEN_GGUF_REVISION: &str = "ae44f08e1392f39c0e474af10c3ff8355c8b6688";
 
 /// The pinned candidates. The defaults are chosen from measurements in
 /// docs/BENCHMARKS.md; the others remain available for evaluation.
-pub const MODELS: [ModelSpec; 3] = [
+pub const NEMOTRON_ID: &str = "nemotron-streaming-en-0.6b-q8_0";
+
+pub const MODELS: [ModelSpec; 4] = [
     ModelSpec {
         id: "whisper-base-q5_1",
         role: Role::Asr,
@@ -105,6 +108,23 @@ pub const MODELS: [ModelSpec; 3] = [
         dtw_preset: None,
         measured_peak_rss_mib: 2_759,
         notes: "Privacy classifier candidate. Adequate recall is unmeasured; automatic upload stays gated.",
+    },
+    ModelSpec {
+        id: NEMOTRON_ID,
+        role: Role::Asr,
+        display_name: "NVIDIA Nemotron Streaming (English, Q8_0)",
+        filename: "nemotron-speech-streaming-en-0.6b.q8_0.gguf",
+        url: "https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b/resolve/ebe59e5a817142986528bbbee5dba8db7b38ed50/nemotron-speech-streaming-en-0.6b.q8_0.gguf",
+        revision: "ebe59e5a817142986528bbbee5dba8db7b38ed50",
+        sha256: "d9a01898d2a611c8764e23a1c2f45e70bbd5a425dc4de93692ac951dd603812d",
+        size_bytes: 699_872_960,
+        quantization: "Q8_0",
+        license: "NVIDIA Open Model License",
+        license_url: "https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b",
+        conversion_provenance: "GGUF published by NVIDIA; native NeMo-Speech.cpp 0.1.0 runtime.",
+        dtw_preset: None,
+        measured_peak_rss_mib: 0,
+        notes: "English native streaming, 560 ms chunks. Requires local NVIDIA runtime setup; vocabulary hints are not supported.",
     },
 ];
 
@@ -222,6 +242,7 @@ pub fn state(models_dir: &Path, spec: &ModelSpec) -> InstallState {
 /// Fails when the source does not match the pin or cannot be copied.
 pub fn import_local(source: &Path, models_dir: &Path, spec: &ModelSpec) -> Result<PathBuf, InstallError> {
     verify(source, spec)?;
+    fs::create_dir_all(models_dir)?;
     let target = installed_path(models_dir, spec);
     let partial = target.with_extension("part");
     fs::copy(source, &partial)?;

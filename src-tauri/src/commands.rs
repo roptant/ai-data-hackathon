@@ -159,7 +159,7 @@ pub struct ModelInfo {
 
 #[tauri::command]
 pub fn list_models(shared: State<'_, Shared_>) -> Vec<ModelInfo> {
-    MODELS
+    let mut models: Vec<ModelInfo> = MODELS
         .iter()
         .map(|spec| ModelInfo {
             id: spec.id,
@@ -173,19 +173,83 @@ pub fn list_models(shared: State<'_, Shared_>) -> Vec<ModelInfo> {
             measured_peak_rss_mib: spec.measured_peak_rss_mib,
             state: dictation_models::state(&shared.layout.models(), spec),
         })
-        .collect()
+        .collect();
+    if let Some(model) = dictation_models::custom::installed(&shared.layout.models()) {
+        let present = model.path(&shared.layout.models()).is_ok_and(|path| path.is_file());
+        models.push(ModelInfo {
+            id: dictation_models::custom::ID,
+            role: dictation_models::Role::Asr,
+            display_name: "Custom Whisper model",
+            size_bytes: model.size_bytes,
+            quantization: "user supplied",
+            license: "See model publisher",
+            provenance: "Explicit local import or checksum-verified download",
+            notes: "Your imported whisper.cpp model.",
+            measured_peak_rss_mib: 0,
+            state: if present { dictation_models::InstallState::Installed } else { dictation_models::InstallState::Missing },
+        });
+    }
+    models
+}
+
+#[tauri::command]
+pub async fn choose_model_file() -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        rfd::FileDialog::new().set_title("Choose a whisper.cpp GGML model")
+            .add_filter("Whisper GGML weights", &["bin"]).pick_file()
+            .map(|path| path.to_string_lossy().into_owned())
+    }).await.map_err(|e| e.to_string())
 }
 
 static DOWNLOAD_CANCEL: AtomicBool = AtomicBool::new(false);
+static DOWNLOAD_ACTIVE: AtomicBool = AtomicBool::new(false);
+
+struct DownloadGuard;
+impl Drop for DownloadGuard {
+    fn drop(&mut self) { DOWNLOAD_ACTIVE.store(false, Ordering::SeqCst); }
+}
+fn begin_download() -> Result<DownloadGuard, String> {
+    DOWNLOAD_ACTIVE.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .map_err(|_| "A model installation is already running.".to_owned())?;
+    DOWNLOAD_CANCEL.store(false, Ordering::SeqCst);
+    Ok(DownloadGuard)
+}
+
+#[tauri::command]
+pub fn install_custom_model(app: AppHandle, shared: State<'_, Shared_>, asr: State<'_, AsrHandle>, source: String, sha256: String) -> Result<(), String> {
+    let guard = begin_download()?;
+    let shared = Arc::clone(shared.inner());
+    let asr = asr.inner().clone();
+    std::thread::spawn(move || {
+        let _guard = guard;
+        let mut last = 0;
+        let result = dictation_models::custom::install(source.trim(), &sha256, &shared.layout.models(), &DOWNLOAD_CANCEL, |received, total| {
+            if received - last >= 4 * 1024 * 1024 {
+                last = received;
+                let _ = app.emit("model-progress", (dictation_models::custom::ID, received, total));
+            }
+        });
+        if result.is_ok() {
+            if let Ok(mut settings) = shared.settings.lock() {
+                settings.asr_model = dictation_models::custom::ID.to_owned();
+            }
+            shared.save_settings();
+            asr.send(AsrRequest::Reload);
+        }
+        let _ = app.emit("model-installed", (dictation_models::custom::ID, result.err()));
+    });
+    Ok(())
+}
 
 /// Downloads a pinned model. This is an explicit, visible network operation.
 #[tauri::command]
 pub fn install_model(app: AppHandle, shared: State<'_, Shared_>, asr: State<'_, AsrHandle>, id: String) -> Result<(), String> {
     let spec = dictation_models::spec(&id).ok_or("unknown model")?;
+    let guard = begin_download()?;
     let directory = shared.layout.models();
     let asr = asr.inner().clone();
-    DOWNLOAD_CANCEL.store(false, Ordering::SeqCst);
     std::thread::spawn(move || {
+        let _guard = guard;
         let mut last = 0_u64;
         let result = dictation_models::download(spec, &directory, &DOWNLOAD_CANCEL, |received, total| {
             if received - last >= 4 * 1024 * 1024 || received == total {
@@ -209,6 +273,7 @@ pub fn cancel_model_download() {
 /// Installs a model file the user obtained separately; verified against the pin.
 #[tauri::command]
 pub fn import_model(shared: State<'_, Shared_>, asr: State<'_, AsrHandle>, id: String, path: String) -> Result<(), String> {
+    let _guard = begin_download()?;
     let spec = dictation_models::spec(&id).ok_or("unknown model")?;
     dictation_models::import_local(&PathBuf::from(path), &shared.layout.models(), spec).map_err(|error| error.to_string())?;
     if spec.role == dictation_models::Role::Asr {

@@ -171,7 +171,20 @@ async fn status(State(state): State<ApiState>, Client(client, _): Client) -> Res
     if let Err(response) = require(&client, Scope::StatusRead) {
         return response;
     }
-    Json(state.controller.status()).into_response()
+    let snapshot = state.controller.status();
+    // Preserve the Rust snapshot fields while providing the v1 envelope used
+    // by the standalone Live Caption client. Capabilities belong to this token.
+    let mut value = serde_json::to_value(&snapshot).expect("status is serializable");
+    value["version"] = serde_json::json!(snapshot.api_version);
+    value["capabilities"] = serde_json::json!(client.scopes.iter().map(|scope| scope.as_str()).collect::<Vec<_>>());
+    value["state"] = serde_json::json!({
+        "state": snapshot.recording_state,
+        "session_id": snapshot.active_session.as_deref().unwrap_or(""),
+        "recording": matches!(snapshot.recording_state.as_str(), "recording" | "recording_held" | "recording_locked"),
+        "locked": snapshot.recording_state == "recording_locked",
+        "partials_available": true,
+    });
+    Json(value).into_response()
 }
 
 fn control_response(result: Result<serde_json::Value, ControlError>) -> Response {

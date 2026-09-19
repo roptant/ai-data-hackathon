@@ -239,11 +239,16 @@ where
     let buffer = Arc::clone(buffer);
     let callback_error = Arc::clone(runtime_error);
     let stream_error = Arc::clone(runtime_error);
+    let received_audio = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let callback_started = Arc::clone(&received_audio);
     let mut resampler = RateConverter::new(source_rate, CANONICAL_SAMPLE_RATE);
     device
         .build_input_stream(
             *config,
             move |input: &[T], _| {
+                if !input.is_empty() {
+                    callback_started.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
                 let mut mono = Vec::with_capacity(input.len() / channels.max(1));
                 for frame in input.chunks_exact(channels.max(1)) {
                     let total: i64 = frame
@@ -269,10 +274,22 @@ where
                     record_error(&callback_error, "capture buffer lock poisoned".to_owned());
                 }
             },
-            move |error| record_error(&stream_error, error.to_string()),
+            move |error| {
+                if fatal_stream_error(error.kind(), received_audio.load(std::sync::atomic::Ordering::Relaxed)) {
+                    record_error(&stream_error, error.to_string());
+                }
+            },
             None,
         )
         .map_err(|error| CaptureError::BuildStream(error.to_string()))
+}
+
+fn fatal_stream_error(kind: cpal::ErrorKind, received_audio: bool) -> bool {
+    // WASAPI devices can report a discontinuity before delivering their first
+    // packet. No session audio has been lost in that case. Later gaps remain
+    // fatal so incomplete audio cannot silently enter a training copy.
+    !matches!(kind, cpal::ErrorKind::RealtimeDenied)
+        && !(kind == cpal::ErrorKind::Xrun && !received_audio)
 }
 
 fn record_error(slot: &Arc<Mutex<Option<String>>>, message: String) {
@@ -374,6 +391,15 @@ impl RateConverter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn startup_discontinuity_does_not_poison_capture() {
+        assert!(!fatal_stream_error(cpal::ErrorKind::Xrun, false));
+        assert!(fatal_stream_error(cpal::ErrorKind::Xrun, true));
+        assert!(fatal_stream_error(cpal::ErrorKind::DeviceNotAvailable, false));
+        assert!(fatal_stream_error(cpal::ErrorKind::PermissionDenied, true));
+        assert!(!fatal_stream_error(cpal::ErrorKind::RealtimeDenied, true));
+    }
 
     #[test]
     fn converter_has_exact_long_term_sample_count() {

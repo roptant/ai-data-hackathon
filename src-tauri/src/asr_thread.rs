@@ -50,6 +50,12 @@ pub fn spawn(shared: Arc<Shared>, workers: WorkerPaths, verifier: Arc<ModelVerif
 
 fn build_engine(shared: &Shared, workers: &WorkerPaths, verifier: &ModelVerifier) -> Result<AsrEngine, String> {
     let settings = shared.settings();
+    if settings.asr_model == dictation_models::custom::ID {
+        let directory = shared.layout.models();
+        let model = dictation_models::custom::installed(&directory).ok_or("Import a custom Whisper model under Setup first.")?;
+        let path = model.verified_path(&directory)?;
+        return AsrEngine::custom(workers, &path).map_err(|error| error.to_string());
+    }
     let spec = dictation_models::spec(&settings.asr_model)
         .unwrap_or_else(|| dictation_models::default_for(dictation_models::Role::Asr));
     let personal: Option<PathBuf> = PersonalModels::new(&shared.layout.models()).active();
@@ -82,12 +88,14 @@ fn run(shared: &Shared, workers: &WorkerPaths, verifier: &ModelVerifier, receive
                     shared.publish(|status| {
                         status.asr_loading = false;
                         status.asr_ready = true;
+                        status.asr_error = None;
                     });
                 }
                 Err(error) => {
                     shared.publish(|status| {
                         status.asr_loading = false;
                         status.asr_ready = false;
+                        status.asr_error = Some(error.clone());
                     });
                     return Err(error);
                 }
@@ -107,6 +115,7 @@ fn run(shared: &Shared, workers: &WorkerPaths, verifier: &ModelVerifier, receive
                 shared.publish(|status| status.asr_ready = false);
             }
             AsrRequest::Reload => {
+                shared.publish(|status| status.asr_ready = false);
                 if let Some(mut built) = engine.take() {
                     built.release();
                 }

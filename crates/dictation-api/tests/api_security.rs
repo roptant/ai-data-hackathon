@@ -167,6 +167,11 @@ async fn requests_need_loopback_host_no_origin_and_a_scoped_token() {
         .await
         .unwrap();
     assert!(body.get("text").is_none());
+    assert_eq!(body["version"], 1);
+    assert_eq!(body["api_version"], 1);
+    assert_eq!(body["state"]["session_id"], "");
+    assert_eq!(body["state"]["partials_available"], true);
+    assert_eq!(body["capabilities"], serde_json::json!(["session:control", "status:read"]));
     assert_eq!(status(http.post(format!("{}/v1/sessions", fixture.base)).bearer_auth("control").send().await.unwrap()), 200);
     assert_eq!(status(http.post(format!("{}/v1/sessions", fixture.base)).bearer_auth("control").send().await.unwrap()), 409);
     for _ in 0..2 {
@@ -179,6 +184,43 @@ async fn requests_need_loopback_host_no_origin_and_a_scoped_token() {
         status(http.post(format!("{}/v1/sessions/other/cancel", fixture.base)).bearer_auth("control").send().await.unwrap()),
         404
     );
+}
+
+/// Optional cross-project test against the actual standalone Python client.
+/// Set LIVE_CAPTION_SOURCE to its src directory and PYTHON to its interpreter.
+#[tokio::test(flavor = "multi_thread")]
+async fn standalone_caption_client_accepts_status_and_stream() {
+    let Ok(source) = std::env::var("LIVE_CAPTION_SOURCE") else { return };
+    let fixture = fixture(64);
+    fixture.directory.add("overlay", &[Scope::StatusRead, Scope::TranscriptLive, Scope::TranscriptFinal]);
+    let bus = fixture.bus.clone();
+    let publisher = tokio::spawn(async move {
+        for seq in 1..=100 {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            bus.publish(ApiEvent::partial("session-test", seq, "segment-1", seq, 0, 500, "Caption integration works"));
+        }
+    });
+    let base = fixture.base.clone();
+    let output = tokio::task::spawn_blocking(move || {
+        std::process::Command::new(std::env::var("PYTHON").unwrap_or_else(|_| "python".into()))
+            .env("PYTHONPATH", source)
+            .args(["-c", r#"
+import sys
+from live_caption.client import LocalApiClient, Endpoint, validate_status
+from live_caption.model import CaptionState
+client = LocalApiClient(Endpoint.parse(sys.argv[1]), 'overlay', timeout=3)
+assert validate_status(client.status()) == ('', True)
+events = client.events()
+try:
+    event = next(events)
+    assert CaptionState().apply(event) == 'Caption integration works'
+finally:
+    events.close()
+print('Standalone caption client: status and WebSocket passed')
+"#, &base]).output().unwrap()
+    }).await.unwrap();
+    publisher.abort();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -254,6 +254,8 @@ pub fn run() {
             commands::install_model,
             commands::cancel_model_download,
             commands::import_model,
+            commands::install_custom_model,
+            commands::choose_model_file,
             commands::get_disclosure,
             commands::grant_consent,
             commands::set_contribution_paused,

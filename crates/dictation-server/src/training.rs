@@ -158,6 +158,7 @@ fn measure(worker: &Path, model: &Path, clips: &[Clip], dtw: Option<&str>) -> Re
         let pcm = pcm_of(&clip.wav).ok_or("invalid_wav")?;
         let request = Request::Transcribe(TranscribeRequest {
             request_id: runner.next_request_id(),
+            stream_epoch: None,
             language: Some("en".to_owned()),
             initial_prompt: None,
             final_pass: true,
@@ -199,6 +200,7 @@ fn measure_memory(worker: &Path, model: &Path, clip: &Clip) -> Option<u32> {
     runner.ensure_started().ok()?;
     let request = Request::Transcribe(TranscribeRequest {
         request_id: runner.next_request_id(),
+        stream_epoch: None,
         language: Some("en".to_owned()),
         initial_prompt: None,
         final_pass: true,

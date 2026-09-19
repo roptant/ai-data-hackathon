@@ -19,6 +19,8 @@
     "allow-install-model",
     "allow-cancel-model-download",
     "allow-import-model",
+    "allow-install-custom-model",
+    "allow-choose-model-file",
     "allow-get-disclosure",
     "allow-grant-consent",
     "allow-set-contribution-paused",

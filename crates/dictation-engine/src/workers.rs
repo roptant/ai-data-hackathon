@@ -156,6 +156,17 @@ pub struct AsrEngine {
 }
 
 impl AsrEngine {
+    /// Loads user-imported GGML weights without assuming a base-model DTW
+    /// architecture. Custom weights are verified by the caller.
+    pub fn custom(paths: &WorkerPaths, model: &Path) -> Result<Self, EngineError> {
+        let arguments = vec!["--model".into(), model.as_os_str().to_owned(), "--threads".into(), worker_threads().to_string().into()];
+        Ok(Self {
+            worker: PersistentWorker::new(spec_for(&paths.asr, arguments, Duration::from_secs(180))?),
+            model_id: dictation_models::custom::ID,
+            model_revision: "user-imported",
+        })
+    }
+
     /// # Errors
     ///
     /// Fails when the worker binary or verified model is unavailable.
@@ -218,9 +229,22 @@ impl AsrEngine {
         vocabulary: Option<&str>,
         timeout: Duration,
     ) -> Result<(String, Vec<RecognizedSegment>), EngineError> {
+        self.transcribe_session(pcm, final_pass, language, vocabulary, timeout, None)
+    }
+
+    pub fn transcribe_session(
+        &mut self,
+        pcm: &[i16],
+        final_pass: bool,
+        language: Option<&str>,
+        vocabulary: Option<&str>,
+        timeout: Duration,
+        stream_epoch: Option<u64>,
+    ) -> Result<(String, Vec<RecognizedSegment>), EngineError> {
         let bytes: Vec<u8> = pcm.iter().flat_map(|sample| sample.to_le_bytes()).collect();
         let request = Request::Transcribe(TranscribeRequest {
             request_id: self.worker.next_request_id(),
+            stream_epoch,
             language: language.map(str::to_owned),
             initial_prompt: vocabulary.filter(|text| !text.is_empty()).map(str::to_owned),
             final_pass,
@@ -399,4 +423,26 @@ pub const LOW_MEMORY_THRESHOLD_MIB: u64 = 12 * 1024;
 #[must_use]
 pub fn is_low_memory() -> bool {
     total_memory_mib().is_none_or(|total| total < LOW_MEMORY_THRESHOLD_MIB)
+}
+
+#[cfg(test)]
+mod custom_model_tests {
+    use super::*;
+
+    /// Optional real-runtime check, using explicitly supplied local test weights.
+    #[test]
+    fn imported_model_loads_in_the_native_worker() {
+        let (Ok(source), Ok(worker)) = (std::env::var("TEST_WHISPER_MODEL"), std::env::var("TEST_ASR_WORKER")) else { return };
+        let directory = std::env::temp_dir().join(format!("custom-asr-smoke-{}", std::process::id()));
+        let model = dictation_models::custom::install(&source, "", &directory, &AtomicBool::new(false), |_, _| {}).unwrap();
+        let path = model.verified_path(&directory).unwrap();
+        let paths = WorkerPaths { asr: worker.into(), privacy: PathBuf::new() };
+        let mut engine = AsrEngine::custom(&paths, &path).unwrap();
+        let ready = engine.warm().unwrap();
+        assert!(ready.model_description.contains("dtw=false"));
+        let result = engine.transcribe(&vec![0; 16_000], true, Some("en"), None, Duration::from_secs(30));
+        assert!(result.is_ok(), "{result:?}");
+        engine.release();
+        std::fs::remove_dir_all(directory).unwrap();
+    }
 }

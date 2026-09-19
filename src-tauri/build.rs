@@ -16,6 +16,8 @@ fn main() {
             "install_model",
             "cancel_model_download",
             "import_model",
+            "install_custom_model",
+            "choose_model_file",
             "get_disclosure",
             "grant_consent",
             "set_contribution_paused",

@@ -55,6 +55,9 @@ impl Request {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TranscribeRequest {
     pub request_id: u64,
+    /// Native streaming session; absent preserves stateless Whisper behavior.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stream_epoch: Option<u64>,
     /// ISO 639-1 code, or `None` for detection.
     pub language: Option<String>,
     /// Local vocabulary hint. It stays inside the ASR worker.

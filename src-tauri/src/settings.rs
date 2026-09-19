@@ -237,9 +237,11 @@ impl AppSettings {
             next.language = language;
         }
         if let Some(model) = update.asr_model {
-            let spec = dictation_models::spec(&model).ok_or("Unknown recognition model.")?;
-            if spec.role != dictation_models::Role::Asr {
-                return Err("That model is not a recognition model.".to_owned());
+            if model != dictation_models::custom::ID {
+                let spec = dictation_models::spec(&model).ok_or("Unknown recognition model.")?;
+                if spec.role != dictation_models::Role::Asr {
+                    return Err("That model is not a recognition model.".to_owned());
+                }
             }
             next.asr_model = model;
         }

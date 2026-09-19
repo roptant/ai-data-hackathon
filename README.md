@@ -31,6 +31,10 @@ Production automatic upload is disabled. The recorded Qwen evaluation catches
 
 ## Build and test
 
+For custom Whisper imports, Hugging Face conversion, recording shortcut modes,
+and connecting the standalone caption overlay, see
+[Custom models and Live Caption](docs/CUSTOM_MODELS_AND_CAPTIONS.md).
+
 Prerequisites are Rust 1.85 or newer, Node.js/npm, CMake, and the native
 dependencies required by Tauri and the audio backend.
 
